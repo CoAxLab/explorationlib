@@ -45,10 +45,10 @@ def render_2d(name,
     sel_data = select_exp(exp_data, num_experiment)
 
     # Iterate frames
-    states = np.vstack(sel_data["exp_state"])
     targets = np.vstack(env.targets)
-    # rewards = sel_data["exp_reward"]
-    # lengths = sel_data["agent_l"]
+    states = np.vstack(sel_data["exp_state"])
+    rewards = sel_data["exp_reward"]
+
     for i in range(states.shape[0]):
         # Field
         plt.scatter(
@@ -58,16 +58,20 @@ def render_2d(name,
             color="black",
             alpha=1)
 
+        color = "black"
+        if rewards[i] > 0:
+            color = "red"  # wow!
+
         # Path
-        plt.plot(states[0:i, 0], states[0:i, 1], color="grey", alpha=1)
+        plt.plot(states[0:i, 0], states[0:i, 1], color=color, alpha=1)
 
         # Agent
         plt.plot(states[i, 0],
                  states[i, 1],
-                 color="purple",
+                 color=color,
                  markersize=env.detection_radius,
                  marker='o',
-                 alpha=0.6)
+                 alpha=1)
 
         # Labels
         plt.xlim(-boundary[0], boundary[0])
