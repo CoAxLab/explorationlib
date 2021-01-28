@@ -7,49 +7,82 @@ from explorationlib.util import select_exp
 
 from celluloid import Camera
 
+import base64
+from IPython import display
 
-def render_exp2d(name,
-                 env,
-                 exp_data,
-                 experiment=0,
-                 figsize=(3, 3),
-                 boundary=(1, 1)):
-    """Replay an experiment as a .gif"""
 
-    # Init the gif/fig
+def show_gif(name):
+    """Show gifs, in notebooks.
+    
+    Code from:
+    https://github.com/ipython/ipython/issues/10045#issuecomment-642640541
+    """
+
+    with open(name, 'rb') as fd:
+        b64 = base64.b64encode(fd.read()).decode('ascii')
+
+    return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
+
+
+def render_2d(name,
+              env,
+              exp_data,
+              num_experiment=0,
+              figsize=(4, 4),
+              boundary=(50, 50),
+              interval=200):
+    """Replay an experiment, as a movie.
+    
+    NOTE: can be very slow to run for experiments
+    with more than a couple thousand steps.
+    """
+
+    # Init
     fig = plt.figure(figsize=figsize)
     camera = Camera(fig)
 
-    # Select the experiment's data
-    sel_data = select_exp(exp_data, experiment)
+    # Select data
+    sel_data = select_exp(exp_data, num_experiment)
 
-    # Plot targets
-    ax = plt.subplot(311)
-    vec = np.vstack(env.targets)
-    ax.scatter(
-        vec[:, 0],
-        vec[:, 1],
-        env.values,  # value is size, literal
-        color="black",
-        alpha=1)
-    ax.set_xlim(-boundary[0], boundary[0])
-    ax.set_ylim(-boundary[1], boundary[1])
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    camera.snap()
+    # Iterate frames
+    states = np.vstack(sel_data["exp_state"])
+    targets = np.vstack(env.targets)
+    # rewards = sel_data["exp_reward"]
+    # lengths = sel_data["agent_l"]
+    for i in range(states.shape[0]):
+        # Field
+        plt.scatter(
+            targets[:, 0],
+            targets[:, 1],
+            env.values,  # value is size, literal
+            color="black",
+            alpha=1)
 
-    # Plot the search
-    d = env.detection_radius
-    states = sel_data["exp_state"]
-    rewards = sel_data["exp_reward"]
-    lengths = sel_data["agent_l"]
-    for s, r, l in zip(states, rewards, lengths):
-        ax.plot(s[0], s[1], color="purple", alpha=0.6)
+        # Path
+        plt.plot(states[0:i, 0], states[0:i, 1], color="grey", alpha=1)
+
+        # Agent
+        plt.plot(states[i, 0],
+                 states[i, 1],
+                 color="purple",
+                 markersize=env.detection_radius,
+                 marker='o',
+                 alpha=0.6)
+
+        # Labels
+        plt.xlim(-boundary[0], boundary[0])
+        plt.ylim(-boundary[1], boundary[1])
+        plt.xlabel("x")
+        plt.ylabel("y")
+
+        # Frame
         camera.snap()
 
-    # Render the movie
-    animation = camera.animate()
-    animation.save(f'{name}.gif')
+    # Render
+    animation = camera.animate(interval=interval)
+    animation.save(f'{name}')
+
+    return camera
 
 
 def plot_targets2d(env,
