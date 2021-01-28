@@ -4,6 +4,7 @@
 # Book
 */_build
 *.pkl
+*.gif
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
