@@ -60,7 +60,7 @@ def render_2d(name,
 
         color = "black"
         if rewards[i] > 0:
-            color = "red"  # wow!
+            color = "red"  # wow!``
 
         # Path
         plt.plot(states[0:i, 0], states[0:i, 1], color=color, alpha=1)
