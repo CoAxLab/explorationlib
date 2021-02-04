@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import stats
 from explorationlib.util import select_exp
 
 
@@ -63,10 +62,11 @@ def first_reward(exp_data):
         # first target/reward
         time = 1
         for r, l in zip(rewards, steps):
-            if np.abs(r) > 0:
-                firsts.append(1 / time)
-            else:
+            if np.isclose(r, 0.0):
                 time += l
+            else:
+                firsts.append(1 / time)
+                break
 
         return firsts
 
