@@ -115,6 +115,8 @@ class Levy2d(Agent2d):
         self.min_l = min_l
         self.exponent = exponent
         self.detection_radius = detection_radius
+        self.renorm = (self.exponent - 1) / (self.min_l**(1 - self.exponent))
+
         self.reset()
 
     def _l(self, state):
@@ -122,7 +124,8 @@ class Levy2d(Agent2d):
         i = 0
         while True and i < 10000:
             i += 1
-            l = np.power(self.np_random.uniform(), (-1 / self.exponent))
+            xi = self.np_random.rand()
+            l = self.renorm * np.power(xi, (-1 / self.exponent))
             if l > self.min_l:
                 return l
 
@@ -262,7 +265,7 @@ class Diffusion2d(Agent2d):
 
     def _delta(self, state):
         """Set step size"""
-        # delta - r * 4 steps for each l
+        # r * 4 steps for each l (magic number)
         div = int(self.l / self.detection_radius) * 4
         if div > 1:
             delta = np.linspace(0, self.l, num=div)[1]
