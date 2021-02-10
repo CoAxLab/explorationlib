@@ -185,7 +185,7 @@ def plot_length(exp_data,
 
     # !
     ax.plot(step, l, color=color, label=label, alpha=alpha)
-    ax.set_xlabel("Turn")
+    ax.set_xlabel("Turn count")
     ax.set_ylabel("Length")
 
     # Labels, legends, titles?
