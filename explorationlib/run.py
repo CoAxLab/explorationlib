@@ -9,10 +9,17 @@ from explorationlib.util import save
 from tqdm.autonotebook import tqdm
 
 
-def experiment(name, agent, env, num_steps=1, num_experiments=1, seed=None):
+def experiment(name,
+               agent,
+               env,
+               num_steps=1,
+               num_experiments=1,
+               seed=None,
+               dump=True):
     """Run an experiment. 
     
-    Note: the experiment log gets saved to 'name'. 
+    Note: by default the experiment log gets saved to 'name' and this
+    function returns None: To return the exp_data, set dump=False.
     """
 
     # Create a log
@@ -63,7 +70,10 @@ def experiment(name, agent, env, num_steps=1, num_experiments=1, seed=None):
     log["env"] = env.reset()
     log["agent"] = agent.reset()
 
-    save(log, filename=name)
+    if dump:
+        save(log, filename=name)
+    else:
+        return log
 
 
 def multi_experiment(name, agents, env, num_episodes=1, seed=None):
