@@ -5,7 +5,7 @@ import seaborn as sns
 from explorationlib.util import load
 from explorationlib.util import select_exp
 
-from celluloid import Camera
+# from celluloid import Camera
 
 import base64
 from IPython import display
@@ -24,69 +24,69 @@ def show_gif(name):
     return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
 
 
-def render_2d(name,
-              env,
-              exp_data,
-              num_experiment=0,
-              figsize=(4, 4),
-              boundary=(50, 50),
-              interval=200):
-    """Replay an experiment, as a movie.
-    
-    NOTE: can be very slow to run for experiments
-    with more than a couple thousand steps.
-    """
+# def render_2d(name,
+#               env,
+#               exp_data,
+#               num_experiment=0,
+#               figsize=(4, 4),
+#               boundary=(50, 50),
+#               interval=200):
+#     """Replay an experiment, as a movie.
 
-    # Init
-    fig = plt.figure(figsize=figsize)
-    camera = Camera(fig)
+#     NOTE: can be very slow to run for experiments
+#     with more than a couple thousand steps.
+#     """
 
-    # Select data
-    sel_data = select_exp(exp_data, num_experiment)
+#     # Init
+#     fig = plt.figure(figsize=figsize)
+#     camera = Camera(fig)
 
-    # Iterate frames
-    targets = np.vstack(env.targets)
-    states = np.vstack(sel_data["exp_state"])
-    rewards = sel_data["exp_reward"]
+#     # Select data
+#     sel_data = select_exp(exp_data, num_experiment)
 
-    for i in range(states.shape[0]):
-        # Field
-        plt.scatter(
-            targets[:, 0],
-            targets[:, 1],
-            env.values,  # value is size, literal
-            color="black",
-            alpha=1)
+#     # Iterate frames
+#     targets = np.vstack(env.targets)
+#     states = np.vstack(sel_data["exp_state"])
+#     rewards = sel_data["exp_reward"]
 
-        color = "black"
-        if rewards[i] > 0:
-            color = "red"  # wow!``
+#     for i in range(states.shape[0]):
+#         # Field
+#         plt.scatter(
+#             targets[:, 0],
+#             targets[:, 1],
+#             env.values,  # value is size, literal
+#             color="black",
+#             alpha=1)
 
-        # Path
-        plt.plot(states[0:i, 0], states[0:i, 1], color=color, alpha=1)
+#         color = "black"
+#         if rewards[i] > 0:
+#             color = "red"  # wow!``
 
-        # Agent
-        plt.plot(states[i, 0],
-                 states[i, 1],
-                 color=color,
-                 markersize=env.detection_radius,
-                 marker='o',
-                 alpha=1)
+#         # Path
+#         plt.plot(states[0:i, 0], states[0:i, 1], color=color, alpha=1)
 
-        # Labels
-        plt.xlim(-boundary[0], boundary[0])
-        plt.ylim(-boundary[1], boundary[1])
-        plt.xlabel("x")
-        plt.ylabel("y")
+#         # Agent
+#         plt.plot(states[i, 0],
+#                  states[i, 1],
+#                  color=color,
+#                  markersize=env.detection_radius,
+#                  marker='o',
+#                  alpha=1)
 
-        # Frame
-        camera.snap()
+#         # Labels
+#         plt.xlim(-boundary[0], boundary[0])
+#         plt.ylim(-boundary[1], boundary[1])
+#         plt.xlabel("x")
+#         plt.ylabel("y")
 
-    # Render
-    animation = camera.animate(interval=interval)
-    animation.save(f'{name}')
+#         # Frame
+#         camera.snap()
 
-    return camera
+#     # Render
+#     animation = camera.animate(interval=interval)
+#     animation.save(f'{name}')
+
+#     return camera
 
 
 def plot_targets2d(env,
