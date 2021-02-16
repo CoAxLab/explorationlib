@@ -9,6 +9,8 @@ from sklearn.neighbors import KDTree
 import gym
 from gym import spaces
 from gym.utils import seeding
+from gym_maze.envs.maze_view_2d import MazeView2D
+from gym_maze.envs import MazeEnv
 
 from explorationlib.agent import Levy2d
 
@@ -16,10 +18,49 @@ from explorationlib.agent import Levy2d
 import warnings
 warnings.filterwarnings("ignore")
 
-
 # -------------------------------------------------------------------------
 # Enviroments
 # -------------------------------------------------------------------------
+
+
+class ScentMazeEnv(MazeEnv):
+    def __init__(self,
+                 amplitude=1.0,
+                 sigma=1.0,
+                 maze_file=None,
+                 maze_size=None,
+                 mode=None,
+                 enable_render=True):
+        """A maze, where the target has a scent"""
+        # Init Maze then...
+        super().__init__(maze_file=maze_file,
+                         maze_size=maze_size,
+                         mode=mode,
+                         enable_render=enable_render)
+
+        # Add a scent grid
+        self.scent = create_scent(
+            self.maze_size[0],
+            self.maze_size[1],
+            amplitude=amplitude,
+            sigma=sigma,
+        )
+
+    def step(self, action):
+        # Maze step
+        self.position, self.reward, self.done, self.info = super().step(action)
+
+        # Index scent
+        x, y = int(self.position[0]), int(self.position[1])
+
+        # Return
+        self.state = (self.position, self.scent[x, y])
+        return (self.state, self.reward, self.done, self.info)
+
+    def last(self):
+        return (self.state, self.reward, self.done, self.info)
+
+
 class Field(gym.Env):
     """An open-field to explore, with no boundries."""
     def __init__(self):
@@ -100,22 +141,24 @@ class Field(gym.Env):
         pass
 
 
-class Grid(Field):
-    """An open-grid to explore, with no boundries."""
+class CardinalGrid(Field):
+    """A discrete open-ended grid-world, with a
+         (N,S,E,W) : (0,1,2,3) action space.
+    """
     def __init__(self):
         super().__init__()
 
     def step(self, action):
-        # Cast to int to truncate,
-        # then back to float....
-        # for API consistency
-        # HERE
-        if not isinstance(action[0], int):
-            action[0] = float(int(action[0]))
-        if not isinstance(action[1], int):
-            action[1] = float(int(action[1]))
-
-        super().step(action)
+        # Interpret action as a cardinal direction
+        action = int(action)
+        if action == 0:
+            super().step((0, 1))
+        elif action == 1:
+            super().step((0, -1))
+        elif action == 2:
+            super().step((1, 0))
+        elif action == 3:
+            super().step((-1, 0))
         super().check_targets()
         return self.last()
 
@@ -182,6 +225,23 @@ class Bounded(Field):
 # -------------------------------------------------------------------------
 # Targets
 # -------------------------------------------------------------------------
+def create_scent(x, y, amplitude=1, sigma=1):
+    """Make Guassian 'scent' grid
+    
+    Code taken from:
+    https://www.geeksforgeeks.org/how-to-generate-2-d-gaussian-array-using-numpy/
+    """
+    # Grid
+    x_grid, y_grid = np.meshgrid(np.linspace(x, 0, x), np.linspace(y, 0, y))
+    distance = np.sqrt(x_grid * x_grid + y_grid * y_grid)
+
+    # Sample
+    gauss = np.exp(-((distance)**2 / (2.0 * sigma**2)))
+
+    # Scale
+    return amplitude * gauss
+
+
 def _init_prng(prng):
     if prng is None:
         return np.random.RandomState(prng)

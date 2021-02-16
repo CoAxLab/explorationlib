@@ -44,6 +44,274 @@ class Agent2d:
         return NotImplementedError("Stub.")
 
 
+class UniformDiscrete(Agent2d):
+    def __init__(self, num_actions=4, min_length=1, max_length=4):
+        super().__init__()
+        self.num_actions = num_actions
+        self.min_length = int(min_length)
+        self.max_length = int(max_length)
+        self.step_size = 1
+
+    def _angle(self, state):
+        return int(self.np_random.randint(0, self.num_actions))
+
+    def _l(self, state):
+        """Sample length"""
+        l = int(self.np_random.uniform(self.min_length, self.max_length))
+        return l
+
+    def forward(self, state):
+        """Step forward."""
+        # Go? or Turn?
+        if self.l > self.step:
+            self.num_step += 1
+            self.step += self.step_size
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
+            self.step = self.step_size
+
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+        self.num_turn = 0
+        self.l = 0
+        self.angle = None
+        self.num_step = 0
+        self.step = 0
+        self.history = defaultdict(list)
+
+
+class DiffusionDiscrete(Agent2d):
+    """Diffusion search"""
+    def __init__(self, num_actions=4, min_length=1, scale=2):
+        super().__init__()
+
+        self.num_actions = int(num_actions)
+        self.min_length = int(min_length)
+        self.scale = float(scale)
+
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        return int(self.np_random.randint(0, self.num_actions))
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = self.np_random.exponential(self.scale)
+            l = int(l)
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+        # Go? Or turn?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
+            self.step = self.step_size
+
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+        self.num_turn = 0
+        self.l = 0
+        self.angle = None
+        self.num_step = 0
+        self.step = 0
+        self.history = defaultdict(list)
+
+
+class TruncatedLevyDiscrete(Agent2d):
+    """Truncated Levy search, for discrete worlds.
+    
+    Citation
+    --------
+    Renorm scheme taken from:
+    Jansen, V. A. A., Mashanova, A. & Petrovskii, S. Comment on ‘Levy Walks Evolve Through Interaction Between Movement and Environmental Complexity’. Science 335, 918–918 (2012).
+    """
+    def __init__(self, num_actions=4, min_length=1, max_length=10, exponent=2):
+        super().__init__()
+
+        self.exponent = float(exponent)
+        self.num_actions = int(num_actions)
+        self.min_length = int(min_length)
+        self.max_length = int(max_length)
+        self.step_size = 1
+
+        min_norm = self.min_length**(1 - self.exponent)
+        max_norm = self.max_length**(1 - self.exponent)
+        self.renorm = (self.exponent - 1) / (min_norm - max_norm)
+
+        self.reset()
+
+    def _angle(self, state):
+        return int(self.np_random.randint(0, self.num_actions))
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = np.power(self.np_random.uniform(), (-1 / self.exponent))
+            l = int(l)
+            if (l > self.min_length) and (l <= self.max_length):
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+        # Go? Or Turn?
+        if self.l > self.step:
+            self.num_step += 1
+            self.step += self.step_size
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
+            self.step = self.step_size
+
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+        self.num_turn = 0
+        self.l = 0
+        self.angle = None
+        self.num_step = None
+        self.step = 0
+        self.history = defaultdict(list)
+
+
+class GradientDiffusionDiscrete(Agent2d):
+    """Diffusion search"""
+    def __init__(self,
+                 num_actions=4,
+                 min_length=1,
+                 scale=2,
+                 p_max=0.8,
+                 p_min=0.2):
+        super().__init__()
+
+        self.scale = float(scale())
+        self.num_actions = int(num_actions)
+        self.min_length = int(min_length)
+        self.p_min = float(p_min)
+        self.p_max = float(p_max)
+        self.last_obs = 0.0
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        return int(self.np_random.randint(0, self.num_actions))
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = self.np_random.exponential(self.scale)
+            l = int(l)
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+        # Parse
+        _, obs = state
+
+        # Est grad (crudely)
+        grad = np.sign(obs - self.last_obs)
+        self.last_obs = deepcopy(obs)
+
+        # Go? Or turn?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        else:
+            # Flip a grad weighted coin to see if we turn
+            if grad > 0:
+                p = self.p_min
+            else:
+                p = self.p_max
+            if p < self.np_random.rand():
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
+                self.step = self.step_size
+
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_grad"].append(deepcopy(grad))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+        self.num_turn = 0
+        self.l = 0
+        self.angle = None
+        self.num_step = 0
+        self.last_obs = 0.0
+        self.step = 0
+        self.history = defaultdict(list)
+
+
 class Uniform2d(Agent2d):
     """Uniform (maxent) search"""
     def __init__(self,
