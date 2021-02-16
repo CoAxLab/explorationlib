@@ -49,12 +49,12 @@ def experiment(name,
             agent.update(state, reward, info)
 
             # Log step env
-            log["exp_step"].append(n)
-            log["num_experiment"].append(k)
-            log["exp_state"].append(state.copy())
-            log["exp_action"].append(action.copy())
-            log["exp_reward"].append(reward)
-            log["exp_info"].append(info)
+            log["exp_step"].append(deepcopy(n))
+            log["num_experiment"].append(deepcopy(k))
+            log["exp_state"].append(deepcopy(state))
+            log["exp_action"].append(deepcopy(action))
+            log["exp_reward"].append(deepcopy(reward))
+            log["exp_info"].append(deepcopy(info))
 
             if done:
                 break
