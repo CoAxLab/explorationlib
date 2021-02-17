@@ -230,7 +230,13 @@ class TruncatedLevyDiscrete(Agent2d):
 
 
 class GradientDiffusionDiscrete(Agent2d):
-    """Diffusion search"""
+    """Diffusion search, but the sense/obs gradient 
+    effects turn probability. 
+    
+    Note: 
+    ----
+    Positive gradients set the turn prob. to p_min.
+    """
     def __init__(self,
                  num_actions=4,
                  min_length=1,
@@ -239,9 +245,10 @@ class GradientDiffusionDiscrete(Agent2d):
                  p_min=0.2):
         super().__init__()
 
-        self.scale = float(scale())
+        self.scale = float(scale)
         self.num_actions = int(num_actions)
         self.min_length = int(min_length)
+
         self.p_min = float(p_min)
         self.p_max = float(p_max)
         self.last_obs = 0.0
@@ -264,29 +271,31 @@ class GradientDiffusionDiscrete(Agent2d):
     def forward(self, state):
         """Step forward."""
         # Parse
-        _, obs = state
+        pos, obs = state
 
         # Est grad (crudely)
         grad = np.sign(obs - self.last_obs)
         self.last_obs = deepcopy(obs)
 
-        # Go? Or turn?
+        # Grad weighted coinf
+        p = self.p_max
+        if grad > 0:
+            p = self.p_min
+
         if self.l > self.step:
             self.step += self.step_size
             self.num_step += 1
         else:
-            # Flip a grad weighted coin to see if we turn
-            if grad > 0:
-                p = self.p_min
-            else:
-                p = self.p_max
-            if p < self.np_random.rand():
+            xi = self.np_random.rand()
+            # print(grad, p, xi, p > xi)
+            if p > xi:
                 self.num_turn += 1
                 self.num_step = 0
                 self.l = self._l(state)
                 self.angle = self._angle(state)
                 self.step = self.step_size
 
+        # print(pos, obs, grad, p, self.angle)
         # Step
         action = self.angle
 
@@ -303,9 +312,13 @@ class GradientDiffusionDiscrete(Agent2d):
 
     def reset(self):
         """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self.min_length
+        self.angle = int(self.np_random.randint(0, self.num_actions))
+
+        # Clean
         self.num_turn = 0
-        self.l = 0
-        self.angle = None
         self.num_step = 0
         self.last_obs = 0.0
         self.step = 0
