@@ -235,22 +235,22 @@ class GradientDiffusionDiscrete(Agent2d):
     
     Note: 
     ----
-    Positive gradients set the turn prob. to p_min.
+    Positive gradients set the turn prob. to p_pos.
     """
     def __init__(self,
                  num_actions=4,
                  min_length=1,
                  scale=2,
-                 p_max=0.8,
-                 p_min=0.2):
+                 p_neg=0.8,
+                 p_pos=0.2):
         super().__init__()
 
         self.scale = float(scale)
         self.num_actions = int(num_actions)
         self.min_length = int(min_length)
 
-        self.p_min = float(p_min)
-        self.p_max = float(p_max)
+        self.p_pos = float(p_pos)
+        self.p_neg = float(p_neg)
         self.last_obs = 0.0
         self.step_size = 1
         self.reset()
@@ -278,9 +278,9 @@ class GradientDiffusionDiscrete(Agent2d):
         self.last_obs = deepcopy(obs)
 
         # Grad weighted coinf
-        p = self.p_max
+        p = self.p_neg
         if grad > 0:
-            p = self.p_min
+            p = self.p_pos
 
         if self.l > self.step:
             self.step += self.step_size
