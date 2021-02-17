@@ -28,7 +28,7 @@ class ScentMazeEnv(MazeEnv):
                  maze_file=None,
                  maze_size=None,
                  mode=None,
-                 enable_render=True):
+                 enable_render=False):
         """A maze, where the target has a scent"""
         # Init Maze then...
         super().__init__(maze_file=maze_file,
@@ -36,6 +36,9 @@ class ScentMazeEnv(MazeEnv):
                          mode=mode,
                          enable_render=enable_render)
         self.scent = None
+        self.reward = 0
+        self.state = None
+        self.info = {}
 
     def add_scent(self, scent):
         self.scent = scent
@@ -270,7 +273,7 @@ class Bounded(Field):
 
 
 # -------------------------------------------------------------------------
-# Targets
+# Scents
 # -------------------------------------------------------------------------
 
 
@@ -280,17 +283,22 @@ def find_nearest(array, value):
     return int(idx)
 
 
-def create_maze_scent(x, y, amplitude=1, sigma=1):
+def create_maze_scent(shape, amplitude=1, sigma=1):
     """Make Guassian 'scent' grid, for the MazeEnv"""
     # Grid
+    x, y = shape
     x_grid, y_grid = np.meshgrid(np.linspace(x, 0, x), np.linspace(y, 0, y))
     distance = np.sqrt(x_grid * x_grid + y_grid * y_grid)
 
     # Sample
     gauss = np.exp(-((distance)**2 / (2.0 * sigma**2)))
+    gauss * -amplitude
 
-    # Scale
-    return amplitude * gauss
+    # Coords
+    x_coord = x_grid[0, :]
+    y_coord = y_grid[:, 0]
+
+    return (x_coord, y_coord), gauss
 
 
 def create_grid_scent(shape, amplitude=1, sigma=10):
@@ -310,6 +318,11 @@ def create_grid_scent(shape, amplitude=1, sigma=10):
     y_coord = y_grid[:, 0]
 
     return (x_coord, y_coord), gauss
+
+
+# -------------------------------------------------------------------------
+# Targets
+# -------------------------------------------------------------------------
 
 
 def _init_prng(prng):
