@@ -25,8 +25,6 @@ warnings.filterwarnings("ignore")
 
 class ScentMazeEnv(MazeEnv):
     def __init__(self,
-                 amplitude=1.0,
-                 sigma=1.0,
                  maze_file=None,
                  maze_size=None,
                  mode=None,
@@ -37,24 +35,22 @@ class ScentMazeEnv(MazeEnv):
                          maze_size=maze_size,
                          mode=mode,
                          enable_render=enable_render)
+        self.scent = None
 
-        # Add a scent grid
-        self.scent = create_scent(
-            self.maze_size[0],
-            self.maze_size[1],
-            amplitude=amplitude,
-            sigma=sigma,
-        )
+    def add_scent(self, scent):
+        self.scent = scent
 
     def step(self, action):
         # Maze step
         self.position, self.reward, self.done, self.info = super().step(action)
-
-        # Index scent
-        x, y = int(self.position[0]), int(self.position[1])
-
-        # Return
-        self.state = (self.position, self.scent[x, y])
+        # Scent?
+        if self.scent is not None:
+            x, y = int(self.position[0]), int(self.position[1])
+            scent = self.scent[x, y]
+        else:
+            scent = 0.0
+        # !
+        self.state = (self.position, scent)
         return (self.state, self.reward, self.done, self.info)
 
     def last(self):
@@ -141,14 +137,14 @@ class Field(gym.Env):
         pass
 
 
-class CardinalGrid(Field):
-    """A discrete open-ended grid-world, with a
-         (N,S,E,W) : (0,1,2,3) action space.
-    """
-    def __init__(self):
+class Grid(Field):
+    """A discrete open-ended grid-world."""
+    def __init__(self, mode="cardinal"):
         super().__init__()
+        self.mode = mode
+        self.scent = None
 
-    def step(self, action):
+    def _card_step(self, action):
         # Interpret action as a cardinal direction
         action = int(action)
         if action == 0:
@@ -160,10 +156,61 @@ class CardinalGrid(Field):
         elif action == 3:
             super().step((-1, 0))
         super().check_targets()
+
+    def step(self, action):
+        if self.mode == "cardinal":
+            self._card_step(action)
         return self.last()
 
     def reset(self):
         self.state = np.zeros(2, dtype=int)
+        self.last()
+
+
+class ScentGrid(Grid):
+    """Am open-grid, with scent"""
+    def __init__(self, mode="cardinal"):
+        super().__init__(mode=mode)
+        self.scent_fn = None
+        self.obs = 0.0
+
+    def add_scent(self, target, value, coord, scent, detection_radius=1):
+        self.scent_x_coord = coord[0] + target[0]
+        self.scent_y_coord = coord[1] + target[1]
+        self.scent_pdf = scent
+        self.add_targets([target], [value],
+                         detection_radius=detection_radius,
+                         kd_kwargs=None)
+
+        def scent_fn(state):
+            x, y = state
+            i = find_nearest(self.scent_x_coord, x)
+            j = find_nearest(self.scent_y_coord, y)
+            return self.scent_pdf[i, j]
+
+        self.scent_fn = scent_fn
+
+    def step(self, action):
+        # Move
+        super().step(action)
+
+        # Scent
+        if self.scent_fn is not None:
+            x, y = int(self.state[0]), int(self.state[1])
+            self.obs = self.scent_fn((x, y))
+        else:
+            self.obs = 0.0
+        # !
+        self.state_obs = (self.state, self.obs)
+        return self.last()
+
+    def last(self):
+        return (self.state_obs, self.reward, self.done, self.info)
+
+    def reset(self):
+        self.state = np.zeros(2, dtype=int)
+        self.obs = 0.0
+        self.state_obs = (self.state, self.obs)
         self.last()
 
 
@@ -225,12 +272,16 @@ class Bounded(Field):
 # -------------------------------------------------------------------------
 # Targets
 # -------------------------------------------------------------------------
-def create_scent(x, y, amplitude=1, sigma=1):
-    """Make Guassian 'scent' grid
-    
-    Code taken from:
-    https://www.geeksforgeeks.org/how-to-generate-2-d-gaussian-array-using-numpy/
-    """
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return int(idx)
+
+
+def create_maze_scent(x, y, amplitude=1, sigma=1):
+    """Make Guassian 'scent' grid, for the MazeEnv"""
     # Grid
     x_grid, y_grid = np.meshgrid(np.linspace(x, 0, x), np.linspace(y, 0, y))
     distance = np.sqrt(x_grid * x_grid + y_grid * y_grid)
@@ -240,6 +291,25 @@ def create_scent(x, y, amplitude=1, sigma=1):
 
     # Scale
     return amplitude * gauss
+
+
+def create_grid_scent(shape, amplitude=1, sigma=10):
+    """Make Guassian 'scent' grid, for the MazeEnv"""
+    # Grid
+    x, y = shape
+    x_grid, y_grid = np.meshgrid(np.linspace(-x, x, 2 * x),
+                                 np.linspace(-y, y, 2 * y))
+    distance = np.sqrt(x_grid * x_grid + y_grid * y_grid)
+
+    # Sample
+    gauss = np.exp(-((distance)**2 / (2.0 * sigma**2)))
+    gauss * -amplitude
+
+    # Coords
+    x_coord = x_grid[0, :]
+    y_coord = y_grid[:, 0]
+
+    return (x_coord, y_coord), gauss
 
 
 def _init_prng(prng):
