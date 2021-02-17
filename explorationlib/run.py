@@ -15,6 +15,7 @@ def experiment(name,
                num_steps=1,
                num_experiments=1,
                seed=None,
+               split_state=False,
                dump=True):
     """Run an experiment. 
     
@@ -51,7 +52,12 @@ def experiment(name,
             # Log step env
             log["exp_step"].append(deepcopy(n))
             log["num_experiment"].append(deepcopy(k))
-            log["exp_state"].append(deepcopy(state))
+            if split_state:
+                pos, obs = state
+                log["exp_state"].append(deepcopy(pos))
+                log["exp_obs"].append(deepcopy(obs))
+            else:
+                log["exp_state"].append(deepcopy(state))
             log["exp_action"].append(deepcopy(action))
             log["exp_reward"].append(deepcopy(reward))
             log["exp_info"].append(deepcopy(info))
