@@ -96,7 +96,7 @@ def plot_scent_grid(env,
                     title=None,
                     ax=None):
     # No targets no plot
-    if env.scent is None:
+    if env.scent_fn is None:
         return None
 
     # Create a fig obj?
@@ -105,7 +105,7 @@ def plot_scent_grid(env,
         ax = fig.add_subplot(111)
 
     # !
-    ax.imshow(env.scent, interpolation=None, cmap=cmap)
+    ax.imshow(env.scent_pdf, interpolation=None, cmap=cmap)
     ax.set_xlabel("i")
     ax.set_ylabel("j")
 
