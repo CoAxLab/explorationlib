@@ -89,6 +89,33 @@ def show_gif(name):
 #     return camera
 
 
+def plot_scent_grid(env,
+                    figsize=(3, 3),
+                    boundary=(1, 1),
+                    cmap='viridis',
+                    title=None,
+                    ax=None):
+    # No targets no plot
+    if env.scent is None:
+        return None
+
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # !
+    ax.imshow(env.scent, interpolation=None, cmap=cmap)
+    ax.set_xlabel("i")
+    ax.set_ylabel("j")
+
+    # Labels, legends, titles?
+    if title is not None:
+        ax.set_title(title)
+
+    return ax
+
+
 def plot_targets2d(env,
                    figsize=(3, 3),
                    boundary=(1, 1),
