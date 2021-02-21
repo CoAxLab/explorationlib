@@ -530,7 +530,7 @@ class Diffusion2d(Agent2d):
     """Diffusion search"""
     def __init__(self,
                  min_length=1,
-                 scale=2,
+                 scale=1,
                  detection_radius=1,
                  step_size=0.):
         super().__init__()
