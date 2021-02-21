@@ -140,6 +140,46 @@ class Field(gym.Env):
         pass
 
 
+class ViswanathanField500(Field):
+    def __init__(self):
+        super().__init__()
+        targets, values = self._create_targets(500)
+        super().add_targets(targets, values, detection_radius=1)
+
+    def _create_targets(self, num_targets):
+        target_boundary = (10000, 10000)
+        targets = uniform_targets(num_targets, target_boundary)
+        values = constant_values(targets, 1)
+        return targets, values
+
+
+class ViswanathanField5000(Field):
+    def __init__(self):
+        super().__init__()
+        targets, values = self._create_targets(5000)
+        super().add_targets(targets, values, detection_radius=1)
+
+    def _create_targets(self, num_targets):
+        target_boundary = (10000, 10000)
+        targets = uniform_targets(num_targets, target_boundary)
+        values = constant_values(targets, 1)
+        return targets, values
+
+
+class ViswanathanField50000(Field):
+    def __init__(self):
+        super().__init__()
+        targets, values = self._create_targets(50000)
+        super().add_targets(targets, values, detection_radius=1)
+
+    def _create_targets(self, num_targets):
+        target_boundary = (10000, 10000)
+        targets = uniform_targets(num_targets, target_boundary)
+        values = constant_values(targets, 1)
+        return targets, values
+
+
+# -------------------------------------------------------------------------
 class Grid(Field):
     """A discrete open-ended grid-world."""
     def __init__(self, mode="cardinal"):
