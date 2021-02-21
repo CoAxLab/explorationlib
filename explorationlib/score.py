@@ -1,10 +1,16 @@
 import numpy as np
-from explorationlib.util import select_exp
 from tqdm.autonotebook import tqdm
+
+from explorationlib.util import load
+from explorationlib.util import select_exp
 
 
 def average_reward(exp_data):
     """Average targets found"""
+
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
 
     target_name = "exp_reward"
     averages = []
@@ -18,6 +24,11 @@ def average_reward(exp_data):
 def total_reward(exp_data):
     """Total targets found"""
 
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    # !
     target_name = "exp_reward"
 
     totals = []
@@ -38,6 +49,11 @@ def first_reward(exp_data):
     search strategies. Rev. Mod. Phys. 83, 81–129 (2011).
     """
 
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    # !
     length_name = "agent_step"
     target_name = "exp_reward"
 
@@ -73,7 +89,11 @@ def search_efficiency(exp_data):
     Viswanathan, G. M. et al. Optimizing the success of random searches. Nature 401, 911–914 (1999).
     """
 
-    # Fmt
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    # !
     length_name = "agent_step"
     target_name = "exp_reward"
 
@@ -104,3 +124,13 @@ def search_efficiency(exp_data):
         effs.append(total_N / total_l)
 
     return effs
+
+
+if __name__ == "__main__":
+    import fire
+    fire.Fire({
+        "average_reward": average_reward,
+        "total_reward": total_reward,
+        "first_reward": first_reward,
+        "search_efficiency": search_efficiency
+    })
