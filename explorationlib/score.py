@@ -1,18 +1,15 @@
 import numpy as np
 from explorationlib.util import select_exp
+from tqdm.autonotebook import tqdm
 
 
 def average_reward(exp_data):
     """Average targets found"""
 
     target_name = "exp_reward"
-
     averages = []
-    for n in range(exp_data["num_experiments"]):
-        # Get one experiments data
-        sel_data = select_exp(exp_data, n)
-        rewards = sel_data[target_name]
-        # Get stat
+    for log in tqdm(exp_data, desc="average_reward"):
+        rewards = log[target_name]
         averages.append(np.mean(rewards))
 
     return averages
@@ -24,10 +21,8 @@ def total_reward(exp_data):
     target_name = "exp_reward"
 
     totals = []
-    for n in range(exp_data["num_experiments"]):
-        # Get one experiments data
-        sel_data = select_exp(exp_data, n)
-        rewards = sel_data[target_name]
+    for log in tqdm(exp_data, desc="total_reward"):
+        rewards = log[target_name]
         # Get stat
         totals.append(np.sum(rewards))
 
@@ -47,11 +42,10 @@ def first_reward(exp_data):
     target_name = "exp_reward"
 
     firsts = []
-    for n in range(exp_data["num_experiments"]):
-        # Get one experiments data
-        sel_data = select_exp(exp_data, n)
-        rewards = sel_data[target_name]
-        steps = sel_data[length_name]
+    for log in tqdm(exp_data, desc="first_reward"):
+        # Get
+        rewards = log[target_name]
+        steps = log[length_name]
 
         # Short circuit if no targets...
         if np.isclose(np.sum(rewards), 0.0):
@@ -84,11 +78,10 @@ def search_efficiency(exp_data):
     target_name = "exp_reward"
 
     effs = []
-    for n in range(exp_data["num_experiments"]):
-        sel_data = select_exp(exp_data, n)
-
-        rewards = sel_data[target_name]
-        steps = sel_data[length_name]
+    for log in tqdm(exp_data, desc="search_efficiency"):
+        # Get
+        rewards = log[target_name]
+        steps = log[length_name]
 
         # Short circuit if no targets...
         if np.isclose(np.sum(rewards), 0.0):

@@ -7,6 +7,8 @@ from collections import defaultdict
 
 from explorationlib.util import save
 from tqdm.autonotebook import tqdm
+from explorationlib import local_gym
+from explorationlib import agent as agent_gym
 
 
 def experiment(name,
@@ -16,15 +18,32 @@ def experiment(name,
                num_experiments=1,
                seed=None,
                split_state=False,
-               dump=True):
+               dump=True,
+               env_kwargs=None,
+               agent_kwargs=None):
     """Run an experiment. 
     
     Note: by default the experiment log gets saved to 'name' and this
     function returns None: To return the exp_data, set dump=False.
     """
 
-    # Create a log
-    log = defaultdict(list)
+    # Parse env
+    if isinstance(env, str):
+        Env = getattr(local_gym, env)
+        if env_kwargs is not None:
+            env = Env(**env_kwargs)
+        else:
+            env = Env()
+
+    # Parse agent
+    if isinstance(agent, str):
+        Agent = getattr(agent_gym, agent)
+        if agent_kwargs is not None:
+            agent = Agent(**agent_kwargs)
+        else:
+            agent = Agent()
+
+    # Pretty name
     base = os.path.basename(name)
     base = os.path.splitext(base)[0]
 
@@ -32,14 +51,21 @@ def experiment(name,
     agent.seed(seed)
     env.seed(seed)
 
+    # Add one log for each exp
+    # to the results list
+    results = []
+
     # !
     for k in tqdm(range(num_experiments), desc=base):
-        # Reset
+        # Create an exp log
+        log = defaultdict(list)
+
+        # Reset world
         agent.reset()
         env.reset()
         state, reward, done, info = env.last()
 
-        # Run episode, for at most num_steps
+        # Run experiment, for at most num_steps
         for n in range(1, num_steps):
             # Step
             action = agent(state)
@@ -69,17 +95,20 @@ def experiment(name,
         for k in agent.history.keys():
             log[k].extend(deepcopy(agent.history[k]))
 
-    # Save agent and env
-    log["exp_name"] = base
-    log["num_experiments"] = num_experiments
-    log["exp_num_steps"] = num_steps
-    log["env"] = env.reset()
-    log["agent"] = agent.reset()
+        # Save agent and env
+        log["exp_name"] = base
+        log["num_experiments"] = num_experiments
+        log["exp_num_steps"] = num_steps
+        log["env"] = env.reset()
+        log["agent"] = agent.reset()
+
+        # Save the log to the results
+        results.append(log)
 
     if dump:
-        save(log, filename=name)
+        save(results, filename=name)
     else:
-        return log
+        return results
 
 
 def multi_experiment(name, agents, env, num_episodes=1, seed=None):
@@ -89,3 +118,8 @@ def multi_experiment(name, agents, env, num_episodes=1, seed=None):
     """
 
     raise NotImplementedError("TODO")
+
+
+if __name__ == "__main__":
+    import fire
+    fire.Fire({"experiment": experiment})
