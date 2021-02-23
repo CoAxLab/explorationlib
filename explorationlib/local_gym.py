@@ -140,19 +140,6 @@ class Field(gym.Env):
         pass
 
 
-class ViswanathanField500(Field):
-    def __init__(self):
-        super().__init__()
-        targets, values = self._create_targets(500)
-        super().add_targets(targets, values, detection_radius=1)
-
-    def _create_targets(self, num_targets):
-        target_boundary = (10000, 10000)
-        targets = uniform_targets(num_targets, target_boundary)
-        values = constant_values(targets, 1)
-        return targets, values
-
-
 class ViswanathanField5000(Field):
     def __init__(self):
         super().__init__()
@@ -160,7 +147,7 @@ class ViswanathanField5000(Field):
         super().add_targets(targets, values, detection_radius=1)
 
     def _create_targets(self, num_targets):
-        target_boundary = (10000, 10000)
+        target_boundary = (100, 100)
         targets = uniform_targets(num_targets, target_boundary)
         values = constant_values(targets, 1)
         return targets, values
@@ -173,7 +160,20 @@ class ViswanathanField50000(Field):
         super().add_targets(targets, values, detection_radius=1)
 
     def _create_targets(self, num_targets):
-        target_boundary = (10000, 10000)
+        target_boundary = (100, 100)
+        targets = uniform_targets(num_targets, target_boundary)
+        values = constant_values(targets, 1)
+        return targets, values
+
+
+class ViswanathanField500000(Field):
+    def __init__(self):
+        super().__init__()
+        targets, values = self._create_targets(500000)
+        super().add_targets(targets, values, detection_radius=1)
+
+    def _create_targets(self, num_targets):
+        target_boundary = (100, 100)
         targets = uniform_targets(num_targets, target_boundary)
         values = constant_values(targets, 1)
         return targets, values

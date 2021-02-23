@@ -328,7 +328,7 @@ class GradientDiffusionDiscrete(Agent2d):
 class Uniform2d(Agent2d):
     """Uniform (maxent) search"""
     def __init__(self,
-                 min_length=1,
+                 min_length=0.1,
                  max_length=10,
                  detection_radius=1,
                  step_size=0.1):
@@ -391,7 +391,7 @@ class Levy2d(Agent2d):
     - Jansen, V. A. A., Mashanova, A. & Petrovskii, S. Comment on ‘Levy Walks Evolve Through Interaction Between Movement and Environmental Complexity’. Science 335, 918–918 (2012).
     """
     def __init__(self,
-                 min_length=1,
+                 min_length=0.1,
                  exponent=2,
                  detection_radius=1,
                  step_size=0.1):
@@ -461,7 +461,7 @@ class TruncatedLevy2d(Agent2d):
     Jansen, V. A. A., Mashanova, A. & Petrovskii, S. Comment on ‘Levy Walks Evolve Through Interaction Between Movement and Environmental Complexity’. Science 335, 918–918 (2012).
     """
     def __init__(self,
-                 min_length=1,
+                 min_length=0.1,
                  max_length=10,
                  exponent=2,
                  detection_radius=1,
@@ -529,10 +529,10 @@ class TruncatedLevy2d(Agent2d):
 class Diffusion2d(Agent2d):
     """Diffusion search"""
     def __init__(self,
-                 min_length=1,
-                 scale=1,
+                 min_length=0.1,
+                 scale=0.1,
                  detection_radius=1,
-                 step_size=0.):
+                 step_size=0.1):
         super().__init__()
         self.step_size = step_size
 
