@@ -224,6 +224,38 @@ def plot_length(exp_data,
     return ax
 
 
+def plot_angle(exp_data,
+               figsize=(4, 2),
+               color="black",
+               alpha=1.0,
+               label=None,
+               title=None,
+               ax=None):
+    # fmt
+    length_name = "agent_angle"
+    step_name = "agent_num_turn"
+    l = np.asarray(exp_data[length_name])
+    step = np.asarray(exp_data[step_name])
+
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # !
+    ax.plot(step, l, color=color, label=label, alpha=alpha)
+    ax.set_xlabel("Turn count")
+    ax.set_ylabel("Length")
+
+    # Labels, legends, titles?
+    if title is not None:
+        ax.set_title(title)
+    if label is not None:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    return ax
+
+
 def plot_length_hist(exp_data,
                      loglog=True,
                      bins=20,
