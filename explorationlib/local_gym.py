@@ -361,6 +361,8 @@ def create_grid_scent(shape, amplitude=1, sigma=10):
 
 
 def add_noise(scent, sigma=0.1, prng=None):
+    """Add white noise, with variance sigma (clipped > 0)"""
+
     if prng is None:
         prng = np.random.RandomState()
     noise = prng.normal(0, sigma, size=scent.shape)
