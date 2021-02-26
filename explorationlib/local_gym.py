@@ -360,6 +360,15 @@ def create_grid_scent(shape, amplitude=1, sigma=10):
     return (x_coord, y_coord), gauss
 
 
+def add_noise(scent, sigma=0.1, prng=None):
+    if prng is None:
+        prng = np.random.RandomState()
+    noise = prng.normal(0, sigma, size=scent.shape)
+    corrupt = scent + noise
+    corrupt = np.clip(corrupt, 0, corrupt.max())
+    return corrupt
+
+
 # -------------------------------------------------------------------------
 # Targets
 # -------------------------------------------------------------------------
