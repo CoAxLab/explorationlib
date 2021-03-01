@@ -40,16 +40,21 @@ class ScentMazeEnv(MazeEnv):
         self.state = None
         self.info = {}
 
-    def add_scent(self, scent):
-        self.scent = scent
+    def add_scent(self, scent, noise_sigma=0.0):
+        self.noise_sigma = noise_sigma
+        self.scent_pdf = scent
 
     def step(self, action):
         # Maze step
         self.position, self.reward, self.done, self.info = super().step(action)
         # Scent?
-        if self.scent is not None:
+        if self.scent_pdf is not None:
+            # Get?
             x, y = int(self.position[0]), int(self.position[1])
-            scent = self.scent[x, y]
+            scent = self.scent_pdf[x, y]
+            # Add noise?
+            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            scent = +noise
         else:
             scent = 0.0
         # !
@@ -68,6 +73,7 @@ class Field(gym.Env):
         self.done = False
 
         self.detection_radius = None
+        self.num_targets = None
         self.targets = None
         self.values = None
 
@@ -83,14 +89,23 @@ class Field(gym.Env):
         """
         return (self.state, self.reward, self.done, self.info)
 
-    def add_targets(self, targets, values, detection_radius=1, kd_kwargs=None):
+    def add_targets(self,
+                    targets,
+                    values,
+                    detection_radius=1,
+                    kd_kwargs=None,
+                    p_target=1.0):
         """Add targets and their values"""
 
         # Sanity
         if len(targets) != len(values):
             raise ValueError("targets and values must match.")
 
+        # Will it be there?
+        self.p_target = p_target
+
         # Store raw targets simply (list)
+        self.num_targets = len(targets)
         self.targets = targets
         self.values = values
         self.detection_radius = detection_radius
@@ -98,6 +113,7 @@ class Field(gym.Env):
         # Also store targets so lookup is efficient (tree)
         if kd_kwargs is None:
             kd_kwargs = {}
+
         self._kd = KDTree(np.vstack(self.targets), **kd_kwargs)
 
     def check_targets(self):
@@ -122,10 +138,18 @@ class Field(gym.Env):
         # Care about the closest; Fmt
         dist = float(dist[0])
         ind = int(ind[0])
+        self.ind = ind  # Save
 
         # Test proximity
         if dist <= self.detection_radius:
-            self.reward = self.values[ind]
+            # Get it the value...
+            value = self.values[ind]
+
+            # do a voin flip to set it as reward.
+            if self.np_random.rand() <= self.p_target:
+                self.reward = value
+            else:
+                self.reward = 0.0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -133,7 +157,7 @@ class Field(gym.Env):
 
     def reset(self):
         self.state = np.zeros(2)
-        self.reward = 0
+        self.reward = 0.0
         self.last()
 
     def render(self, mode='human', close=False):
@@ -179,13 +203,12 @@ class ViswanathanField500000(Field):
         return targets, values
 
 
-# -------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 class Grid(Field):
     """A discrete open-ended grid-world."""
     def __init__(self, mode="cardinal"):
         super().__init__()
         self.mode = mode
-        self.scent = None
 
     def _card_step(self, action):
         # Interpret action as a cardinal direction
@@ -214,12 +237,24 @@ class ScentGrid(Grid):
     """Am open-grid, with scent"""
     def __init__(self, mode="cardinal"):
         super().__init__(mode=mode)
+        self.scent = None
         self.scent_fn = None
         self.obs = 0.0
 
-    def add_scent(self, target, value, coord, scent, detection_radius=1):
+    def add_scent(self,
+                  target,
+                  value,
+                  coord,
+                  scent,
+                  detection_radius=1.0,
+                  noise_sigma=0.0):
+        # Offset coords by target location
+        # align them in other words
         self.scent_x_coord = coord[0] + target[0]
         self.scent_y_coord = coord[1] + target[1]
+
+        # Set scent and its params
+        self.noise_sigma = noise_sigma
         self.scent_pdf = scent
         self.add_targets([target], [value],
                          detection_radius=detection_radius,
@@ -229,13 +264,57 @@ class ScentGrid(Grid):
             x, y = state
             i = find_nearest(self.scent_x_coord, x)
             j = find_nearest(self.scent_y_coord, y)
-            return self.scent_pdf[i, j]
+
+            # Add noise?
+            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            return self.scent_pdf[i, j] + noise
+
+        self.scent_fn = scent_fn
+
+    def add_scents(
+            self,
+            targets,
+            values,
+            coord,  # assume shared
+            scents,
+            detection_radius=1.0,
+            noise_sigma=0.0):
+        """Add several scents, and targets"""
+        self.noise_sigma = noise_sigma
+        self.scent_pdfs = scents
+        self.add_targets(targets,
+                         values,
+                         detection_radius=detection_radius,
+                         kd_kwargs=None)
+
+        # Offset coords by target location
+        # align them in other words
+        self.scent_x_coords = []
+        self.scent_y_coords = []
+        for target in self.targets:
+            self.scent_x_coords.append(coord[0] + target[0])
+            self.scent_y_coords.append(coord[1] + target[1])
+
+        def scent_fn(state):
+            # Pos
+            x, y = state
+
+            # Sum scents from all targets @ pos
+            summed = 0.0
+            for ind in range(self.num_targets):
+                i = find_nearest(self.scent_x_coords[ind], x)
+                j = find_nearest(self.scent_y_coords[ind], y)
+                summed += self.scent_pdfs[ind][i, j]
+
+            # Add noise?
+            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            return summed + noise
 
         self.scent_fn = scent_fn
 
     def step(self, action):
         # Move
-        super().step(action)
+        super().step(action)  # sets self.ind, etc
 
         # Scent
         if self.scent_fn is not None:
@@ -243,6 +322,7 @@ class ScentGrid(Grid):
             self.obs = self.scent_fn((x, y))
         else:
             self.obs = 0.0
+
         # !
         self.state_obs = (self.state, self.obs)
         return self.last()
@@ -324,8 +404,9 @@ def find_nearest(array, value):
 
 
 def create_maze_scent(shape, amplitude=1, sigma=1):
-    """Make Guassian 'scent' grid, for the MazeEnv"""
-    # Grid
+    """Make Guassian 'scent' grid, for the MazeEnv."""
+
+    # Grid...
     x, y = shape
     x_grid, y_grid = np.meshgrid(np.linspace(x, 0, x), np.linspace(y, 0, y))
     distance = np.sqrt(x_grid * x_grid + y_grid * y_grid)
@@ -365,9 +446,8 @@ def add_noise(scent, sigma=0.1, prng=None):
 
     if prng is None:
         prng = np.random.RandomState()
-    noise = prng.normal(0, sigma, size=scent.shape)
+    noise = np.abs(prng.normal(0, sigma, size=scent.shape))
     corrupt = scent + noise
-    corrupt = np.clip(corrupt, 0, corrupt.max())
     return corrupt
 
 
@@ -379,6 +459,8 @@ def add_noise(scent, sigma=0.1, prng=None):
 def _init_prng(prng):
     if prng is None:
         return np.random.RandomState(prng)
+    else:
+        return prng
 
 
 def uniform_targets(N, shape, prng=None):
