@@ -77,6 +77,7 @@ class Field(gym.Env):
         self.targets = None
         self.values = None
 
+        self.seed()
         self.reset()
 
     def step(self, action):
@@ -247,7 +248,8 @@ class ScentGrid(Grid):
                   coord,
                   scent,
                   detection_radius=1.0,
-                  noise_sigma=0.0):
+                  noise_sigma=0.0,
+                  p_target=1.0):
         # Offset coords by target location
         # align them in other words
         self.scent_x_coord = coord[0] + target[0]
@@ -258,7 +260,8 @@ class ScentGrid(Grid):
         self.scent_pdf = scent
         self.add_targets([target], [value],
                          detection_radius=detection_radius,
-                         kd_kwargs=None)
+                         kd_kwargs=None,
+                         p_target=p_target)
 
         def scent_fn(state):
             x, y = state
@@ -278,14 +281,16 @@ class ScentGrid(Grid):
             coord,  # assume shared
             scents,
             detection_radius=1.0,
-            noise_sigma=0.0):
+            noise_sigma=0.0,
+            p_target=1.0):
         """Add several scents, and targets"""
         self.noise_sigma = noise_sigma
         self.scent_pdfs = scents
         self.add_targets(targets,
                          values,
                          detection_radius=detection_radius,
-                         kd_kwargs=None)
+                         kd_kwargs=None,
+                         p_target=p_target)
 
         # Offset coords by target location
         # align them in other words
