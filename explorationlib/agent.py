@@ -305,9 +305,11 @@ class TruncatedLevyDiscrete(Agent2d):
 
 
 class GradientAccumulatorDiscrete(Agent2d):
-    """Diffusion search, but the sense/obs gradient 
-    effects turn probability. 
+    """Incremental search, using evidence accumulation to 
+    estimate the gradient, which in turn effects turn probability. 
     
+    AKA information accumulating E. Coli.
+
     Note: 
     ----
     Positive gradients set the turn prob. to p_pos.
