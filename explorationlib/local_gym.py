@@ -69,7 +69,7 @@ class Field(gym.Env):
     """An open-field to explore, with no boundries."""
     def __init__(self):
         self.info = {}
-        self.reward = 0
+        self.reward = 0.0
         self.done = False
 
         self.detection_radius = None
@@ -129,7 +129,7 @@ class Field(gym.Env):
             return None
 
         # Reinit reward. Assume we are not at a target
-        self.reward = 0
+        self.reward = 0.0
 
         # How far are we and is it close enough to
         # generate a reward? AKA are we at a target?
