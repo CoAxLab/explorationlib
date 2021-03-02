@@ -3,6 +3,7 @@ import numpy as np
 from copy import deepcopy
 from scipy.stats import powerlaw
 from collections import defaultdict
+from sklearn.neighbors import KDTree
 
 
 class Agent2d:
@@ -157,6 +158,80 @@ class DiffusionDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
+class DiffusionMemoryCardinal(DiffusionDiscrete):
+    """Diffusion search, with a short-term memory"""
+    def __init__(self, min_length=1, scale=0.1, **kd_kwargs):
+        super().__init__(num_actions=4, min_length=min_length, scale=scale)
+        self.possible_steps = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        self.memory = {}
+        self.kd_kwargs = kd_kwargs
+
+    def update(self, state, reward, info):
+        # A good memory has a reward
+        if np.nonzero(reward):
+            self.memory[state] = reward
+            self._positions = sorted(list(self.memory.keys()))
+            self._kd = KDTree(np.vstack(self._positions), **self.kd_kwargs)
+        # Only keep good memories
+        else:
+            del self.memory[state]
+
+    def forward(self, state):
+        """Step forward."""
+        # Go? Or turn?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        # Is memory empty?
+        elif len(self.memory) > 0:
+            # Find the best (closest memory)
+            state = np.atleast_2d(np.asarray(state))
+            _, ind = self._kd.query(state, k=1)
+            best = self._positions[ind]
+
+            # Distance to best from all possible_steps?
+            candidates = [
+                np.linalg.norm(
+                    np.asarray(state) + np.asarray(s), np.asarray(best))
+                for s in self.possible_steps
+            ]
+
+            # Pick the nearest
+            ind = np.argmin(candidates)
+
+            # Set direction
+            self.angle = self.possible_steps[ind]
+            self.l = self.step_size
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self.possible_steps[self._angle(state)]
+
+        # Step
+        action = state + self.angle
+        self.step = self.step_size
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+        self.num_turn = 0
+        self.l = 0
+        self.angle = None
+        self.num_step = 0
+        self.step = 0
+        self.history = defaultdict(list)
+
+
 class TruncatedLevyDiscrete(Agent2d):
     """Truncated Levy search, for discrete worlds.
     
@@ -225,6 +300,122 @@ class TruncatedLevyDiscrete(Agent2d):
         self.l = 0
         self.angle = None
         self.num_step = None
+        self.step = 0
+        self.history = defaultdict(list)
+
+
+class GradientAccumulatorDiscrete(Agent2d):
+    """Diffusion search, but the sense/obs gradient 
+    effects turn probability. 
+    
+    Note: 
+    ----
+    Positive gradients set the turn prob. to p_pos.
+    """
+    def __init__(self,
+                 num_actions=4,
+                 min_length=1,
+                 max_steps=100,
+                 drift_rate=1.0,
+                 accumulate_sigma=1.0,
+                 threshold=10.0,
+                 p_neg=0.8,
+                 p_pos=0.2):
+        super().__init__()
+        self.max_steps = int(max_steps)
+        self.drift_rate = float(drift_rate)
+        self.accumulate_sigma = float(accumulate_sigma)
+        self.threshold = float(threshold)
+
+        self.num_actions = int(num_actions)
+        self.min_length = int(min_length)
+
+        self.p_pos = float(p_pos)
+        self.p_neg = float(p_neg)
+        self.last_obs = 0.0
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        return int(self.np_random.randint(0, self.num_actions))
+
+    def _l(self, state):
+        """Sample length"""
+        return self.step_size
+
+    def _accumulate(self, obs):
+        """Weight the evidence for an observation"""
+        evidence = obs
+        for n in range(self.max_steps):
+            drift_p = 0.5 * (
+                1 + (self.drift_rate * np.sqrt(n)) / self.accumulate_sigma)
+            if self.np_random.normal() < drift_p:
+                evidence += obs
+            else:
+                evidence -= obs
+            if np.abs(evidence) > self.threshold:
+                break
+
+        return evidence
+
+    def forward(self, state):
+        """Step forward."""
+        # Parse
+        _, obs = state
+
+        # Deliberate by accumulation
+        evidence = self._accumulate(obs)
+
+        # Est grad using evidence (not the raw obs)
+        grad = np.sign(evidence - self.last_obs)
+
+        # Update the past
+        self.last_obs = deepcopy(obs)
+        # self.last_obs = deepcopy(evidence)
+
+        # Grad weighted coinf
+        p = self.p_neg
+        if grad > 0:
+            p = self.p_pos
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        else:
+            xi = self.np_random.rand()
+            if p > xi:
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
+                self.step = self.step_size
+
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_obs"].append(deepcopy(obs))
+        self.history["agent_evidence"].append(deepcopy(evidence))
+        self.history["agent_grad"].append(deepcopy(grad))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self.min_length
+        self.angle = int(self.np_random.randint(0, self.num_actions))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.last_obs = 0.0
         self.step = 0
         self.history = defaultdict(list)
 
