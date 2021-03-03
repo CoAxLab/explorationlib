@@ -304,7 +304,7 @@ class TruncatedLevyDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
-class GradientAccumulatorDiscrete(Agent2d):
+class AccumulatorGradientDiscrete(Agent2d):
     """Incremental search, using evidence accumulation to 
     estimate the gradient, which in turn effects turn probability. 
     
@@ -345,20 +345,31 @@ class GradientAccumulatorDiscrete(Agent2d):
         """Sample length"""
         return self.step_size
 
-    def _accumulate(self, obs):
+    def _w(self, n):
+        """Wiener process"""
+        # Init/reset
+        if n == 0: self.w = 0.0
+        # Draw
+        xi = self.np_random.normal(0.0, self.accumulate_sigma)
+        # Step process
+        self.w += (xi / np.sqrt(n + 1))
+        return self.w
+
+    def _accumulate_grad(self, obs):
         """Weight the evidence for an observation"""
-        evidence = obs
+        # If no info, treat as p_neg?
+        if np.isclose(obs, 0.0):
+            return obs, -1.0
+
+        # Consider things....
+        evidence = self.drift_rate * (obs - self.last_obs)
         for n in range(self.max_steps):
-            drift_p = 0.5 * (
-                1 + (self.drift_rate * np.sqrt(n)) / self.accumulate_sigma)
-            if self.np_random.normal() < drift_p:
-                evidence += obs
-            else:
-                evidence -= obs
+            evidence += self.drift_rate * self._w(n)
             if np.abs(evidence) > self.threshold:
+                print("!")
                 break
 
-        return evidence
+        return evidence, np.sign(evidence)
 
     def forward(self, state):
         """Step forward."""
@@ -366,14 +377,11 @@ class GradientAccumulatorDiscrete(Agent2d):
         _, obs = state
 
         # Deliberate by accumulation
-        evidence = self._accumulate(obs)
-
-        # Est grad using evidence (not the raw obs)
-        grad = np.sign(evidence - self.last_obs)
+        evidence, grad = self._accumulate_grad(obs)
+        # print(obs, obs - self.last_obs, evidence, grad)
 
         # Update the past
         self.last_obs = deepcopy(obs)
-        # self.last_obs = deepcopy(evidence)
 
         # Grad weighted coinf
         p = self.p_neg
@@ -396,6 +404,7 @@ class GradientAccumulatorDiscrete(Agent2d):
 
         # Log
         self.history["agent_obs"].append(deepcopy(obs))
+        self.history["agent_delta"].append(deepcopy(obs - self.last_obs))
         self.history["agent_evidence"].append(deepcopy(evidence))
         self.history["agent_grad"].append(deepcopy(grad))
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
@@ -419,6 +428,149 @@ class GradientAccumulatorDiscrete(Agent2d):
         self.num_step = 0
         self.last_obs = 0.0
         self.step = 0
+        self.history = defaultdict(list)
+
+
+class AccumulatorGradientCardinal(Agent2d):
+    """Incremental search, using evidence accumulation to 
+    estimate the gradient, which in turn effects turn probability. 
+    
+    AKA information accumulating E. Coli.
+
+    Note: 
+    ----
+    Positive gradients set the turn prob. to p_pos.
+    """
+    def __init__(self,
+                 min_length=1,
+                 max_steps=100,
+                 drift_rate=1.0,
+                 accumulate_sigma=1.0,
+                 threshold=10.0,
+                 p_neg=0.8,
+                 p_pos=0.2):
+        super().__init__()
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        self.max_steps = int(max_steps)
+        self.drift_rate = float(drift_rate)
+        self.accumulate_sigma = float(accumulate_sigma)
+        self.threshold = float(threshold)
+
+        self.min_length = int(min_length)
+
+        self.p_pos = float(p_pos)
+        self.p_neg = float(p_neg)
+        self.last_obs = 0.0
+        self.evidence = 0.0
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        return self.step_size
+
+    def _w(self, n):
+        """Wiener process"""
+        # Init/reset
+        if n == 0: self.w = 0.0
+        # Draw
+        xi = self.np_random.normal(0.0, self.accumulate_sigma)
+        # Step process
+        self.w += (xi / np.sqrt(n + 1))
+        return self.w
+
+    def _accumulate_grad(self, obs, evidence):
+        """Weight the evidence for an observation"""
+        # If no info, treat as p_neg?
+        if np.isclose(obs, 0.0):
+            return obs, -1.0, True
+
+        # Consider things....
+        stop = False
+        delta = self.drift_rate * (obs - self.last_obs)
+        for n in range(self.max_steps):
+            evidence = delta * self.drift_rate * self._w(n)
+            if np.abs(evidence) > self.threshold:
+                stop = True
+                break
+
+        return evidence, np.sign(evidence), stop
+
+    def forward(self, state):
+        """Step forward."""
+        # Parse
+        _, obs = state
+
+        # Deliberate by accumulation
+        self.evidence, grad, stop = self._accumulate_grad(obs, self.evidence)
+
+        # Default is no-op
+        action = (0, 0)
+        self.l = 0.0
+        self.step = 0.0
+
+        # Move only when accum has stopped:
+        if stop:
+            # Reset
+            self.evidence = 0.0
+
+            # Grad weighted coin toss:
+            #
+            # Pick p controller
+            p = self.p_neg
+            if grad > 0:
+                p = self.p_pos
+            # Keep going?
+            if self.l > self.step:
+                self.step += self.step_size
+                self.num_step += 1
+            # Turn?
+            else:
+                if p > self.np_random.rand():
+                    self.num_turn += 1
+                    self.num_step = 0
+                    self.l = self._l(state)
+                    self.angle = self._angle(state)
+                    self.step = self.step_size
+            # Update the past
+            self.last_obs = deepcopy(obs)
+            # Set new direction
+            action = self.angle
+
+        # Log
+        self.history["agent_obs"].append(deepcopy(obs))
+        self.history["agent_delta"].append(deepcopy(obs - self.last_obs))
+        self.history["agent_evidence"].append(deepcopy(self.evidence))
+        self.history["agent_stop"].append(deepcopy(stop))
+        self.history["agent_grad"].append(deepcopy(grad))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        # print(action, self.evidence, self.threshold)
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self._l(np.zeros(2))
+        self.angle = self._angle(np.zeros(2))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.last_obs = 0.0
+        self.step = 0
+        self.evidence = 0.0
         self.history = defaultdict(list)
 
 
@@ -509,6 +661,100 @@ class GradientDiffusionDiscrete(Agent2d):
         # Safe intial values
         self.l = self.min_length
         self.angle = int(self.np_random.randint(0, self.num_actions))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.last_obs = 0.0
+        self.step = 0
+        self.history = defaultdict(list)
+
+
+class GradientDiffusionCardinal(Agent2d):
+    """Diffusion search, but the sense/obs gradient 
+    effects turn probability. 
+    
+    Note: 
+    ----
+    Positive gradients set the turn prob. to p_pos.
+    """
+    def __init__(self, min_length=1, scale=2, p_neg=0.8, p_pos=0.2):
+        super().__init__()
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        self.scale = float(scale)
+        self.min_length = int(min_length)
+
+        self.p_pos = float(p_pos)
+        self.p_neg = float(p_neg)
+        self.last_obs = 0.0
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = self.np_random.exponential(self.scale)
+            l = int(l)
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+        # Parse
+        pos, obs = state
+
+        # Est grad (crudely)
+        grad = np.sign(obs - self.last_obs)
+        self.last_obs = deepcopy(obs)
+
+        # Grad weighted coin toss:
+        #
+        # Pick p controller
+        p = self.p_neg
+        if grad > 0:
+            p = self.p_pos
+        # Keep going?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        # Turn?
+        else:
+            xi = self.np_random.rand()
+            if p > xi:
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
+                self.step = self.step_size
+
+        # print(pos, obs, grad, p, self.angle)
+        # Step
+        action = self.angle
+
+        # Log
+        self.history["agent_grad"].append(deepcopy(grad))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self._l(np.zeros(2))
+        self.angle = self._angle(np.zeros(2))
 
         # Clean
         self.num_turn = 0
