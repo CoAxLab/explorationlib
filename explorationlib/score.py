@@ -40,6 +40,12 @@ def total_reward(exp_data):
     return totals
 
 
+def num_death(exp_data):
+    """Total number of 'deaths' (aka no targets found)"""
+    totals = total_reward(exp_data)
+    return len(totals) - np.count_nonzero(totals)
+
+
 def first_reward(exp_data):
     """Find the inverse time to first target.
     
