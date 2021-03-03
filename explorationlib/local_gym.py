@@ -227,6 +227,9 @@ class Grid(Field):
     def step(self, action):
         if self.mode == "cardinal":
             self._card_step(action)
+        else:
+            super().step(action)
+
         return self.last()
 
     def reset(self):
