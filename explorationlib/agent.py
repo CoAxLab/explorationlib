@@ -10,6 +10,7 @@ class Agent2d:
     """API stub."""
     def __init__(self):
         self.seed()
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
     def seed(self, seed=None):
@@ -75,12 +76,14 @@ class UniformDiscrete(Agent2d):
             self.step = self.step_size
 
         # Step
+        self.total_distance += self.step
         action = self.angle
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -94,6 +97,7 @@ class UniformDiscrete(Agent2d):
         self.angle = None
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -136,12 +140,14 @@ class DiffusionDiscrete(Agent2d):
             self.step = self.step_size
 
         # Step
+        self.total_distance += self.step
         action = self.angle
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -155,6 +161,7 @@ class DiffusionDiscrete(Agent2d):
         self.angle = None
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -211,11 +218,13 @@ class DiffusionMemoryCardinal(DiffusionDiscrete):
         # Step
         action = state + self.angle
         self.step = self.step_size
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -229,6 +238,7 @@ class DiffusionMemoryCardinal(DiffusionDiscrete):
         self.angle = None
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -283,11 +293,13 @@ class TruncatedLevyDiscrete(Agent2d):
 
         # Step
         action = self.angle
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -301,6 +313,7 @@ class TruncatedLevyDiscrete(Agent2d):
         self.angle = None
         self.num_step = None
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -401,6 +414,7 @@ class AccumulatorGradientDiscrete(Agent2d):
 
         # Step
         action = self.angle
+        self.total_distance += self.step
 
         # Log
         self.history["agent_obs"].append(deepcopy(obs))
@@ -410,6 +424,7 @@ class AccumulatorGradientDiscrete(Agent2d):
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -428,6 +443,7 @@ class AccumulatorGradientDiscrete(Agent2d):
         self.num_step = 0
         self.last_obs = 0.0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -542,6 +558,8 @@ class AccumulatorGradientCardinal(Agent2d):
             # Set new direction
             action = self.angle
 
+        self.total_distance += self.step
+
         # Log
         self.history["agent_obs"].append(deepcopy(obs))
         self.history["agent_delta"].append(deepcopy(obs - self.last_obs))
@@ -551,6 +569,7 @@ class AccumulatorGradientCardinal(Agent2d):
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -571,6 +590,7 @@ class AccumulatorGradientCardinal(Agent2d):
         self.last_obs = 0.0
         self.step = 0
         self.evidence = 0.0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -643,12 +663,14 @@ class GradientDiffusionDiscrete(Agent2d):
         # print(pos, obs, grad, p, self.angle)
         # Step
         action = self.angle
+        self.total_distance += self.step
 
         # Log
         self.history["agent_grad"].append(deepcopy(grad))
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -667,6 +689,7 @@ class GradientDiffusionDiscrete(Agent2d):
         self.num_step = 0
         self.last_obs = 0.0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -737,12 +760,14 @@ class GradientDiffusionCardinal(Agent2d):
         # print(pos, obs, grad, p, self.angle)
         # Step
         action = self.angle
+        self.total_distance += self.step
 
         # Log
         self.history["agent_grad"].append(deepcopy(grad))
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -761,6 +786,7 @@ class GradientDiffusionCardinal(Agent2d):
         self.num_step = 0
         self.last_obs = 0.0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -799,11 +825,13 @@ class Uniform2d(Agent2d):
 
         # Step
         action = self._convert(self.angle, self.step_size)
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -817,6 +845,7 @@ class Uniform2d(Agent2d):
         self.angle = 0
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -870,11 +899,13 @@ class Levy2d(Agent2d):
 
         # Step
         action = self._convert(self.angle, self.step_size)
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -888,6 +919,7 @@ class Levy2d(Agent2d):
         self.angle = 0
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -944,11 +976,13 @@ class TruncatedLevy2d(Agent2d):
 
         # Step
         action = self._convert(self.angle, self.step_size)
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -962,6 +996,7 @@ class TruncatedLevy2d(Agent2d):
         self.angle = 0
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
 
 
@@ -1005,11 +1040,13 @@ class Diffusion2d(Agent2d):
 
         # Step
         action = self._convert(self.angle, self.step_size)
+        self.total_distance += self.step
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))
         self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
         self.history["agent_step"].append(deepcopy(self.step_size))
         self.history["agent_num_step"].append(deepcopy(self.num_step))
         self.history["agent_action"].append(deepcopy(action))
@@ -1023,4 +1060,5 @@ class Diffusion2d(Agent2d):
         self.angle = 0
         self.num_step = 0
         self.step = 0
+        self.total_distance = 0.0
         self.history = defaultdict(list)
