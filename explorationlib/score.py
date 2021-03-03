@@ -42,8 +42,24 @@ def total_reward(exp_data):
 
 def num_death(exp_data):
     """Total number of 'deaths' (aka no targets found)"""
-    totals = total_reward(exp_data)
-    return len(totals) - np.count_nonzero(totals)
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    # !
+    target_name = "exp_reward"
+
+    # Get totals
+    totals = []
+    for log in tqdm(exp_data, desc="num_death"):
+        rewards = log[target_name]
+        # Get stat
+        totals.append(np.sum(rewards))
+
+    # Find num of zeros -> deaths
+    death = len(totals) - np.count_nonzero(totals)
+
+    return death
 
 
 def first_reward(exp_data):
