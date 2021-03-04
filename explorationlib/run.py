@@ -106,6 +106,8 @@ def experiment(name,
         results.append(log)
 
     if dump:
+        if not name.endswith(".pkl"):
+            name += ".pkl"
         save(results, filename=name)
     else:
         return results
