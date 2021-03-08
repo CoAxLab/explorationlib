@@ -142,14 +142,6 @@ def multi_experiment(name,
         else:
             env = Env()
 
-    # # Parse agent
-    # if isinstance(agent, str):
-    #     Agent = getattr(agent_gym, agent)
-    #     if agent_kwargs is not None:
-    #         agent = Agent(**agent_kwargs)
-    #     else:
-    #         agent = Agent()
-
     # Pretty name
     base = os.path.basename(name)
     base = os.path.splitext(base)[0]
@@ -183,11 +175,11 @@ def multi_experiment(name,
                     continue
 
                 # Step the agent
-                action = agent(state)
+                action = agent(state[i])
                 state, reward, done, info = env.step(action, i)
 
                 # Learn? Might do nothing.
-                agent.update(state, reward, info)
+                agent.update(state[i], reward, info)
 
                 # Log step env
                 log["num_experiment"].append(deepcopy(k))
