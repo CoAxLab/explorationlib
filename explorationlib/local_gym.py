@@ -299,14 +299,13 @@ class CompetitiveField(gym.Env):
             # Test proximity
             if code not in self.dead:
                 if dist <= self.detection_radius:
-                    # Detection is death
-                    self.dead.append(code)
-
                     # What's the value?
                     value = self.values[ind]
 
                     # Coin flip
                     if self.np_random.rand() <= self.p_target:
+                        # Detection is death
+                        self.dead.append(code)
                         self.reward = value
                     else:
                         self.reward = 0.0
