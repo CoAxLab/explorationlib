@@ -365,6 +365,7 @@ class Grid(Field):
         if self.mode == "cardinal":
             self._card_step(action)
         else:
+            action = [int(a) for a in action]
             super().step(action)
 
         return self.last()
