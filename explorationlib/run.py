@@ -92,6 +92,12 @@ def experiment(name,
                 break
 
         # Log full agent history
+        # TODO - someday updatee all code to save comp and reg exps the same
+        # way, like this
+        # log["agent_history"] = []
+        # log["agent_history"].append(agent.history)
+
+        # Old fmt. Replace w/ above
         for k in agent.history.keys():
             log[k].extend(deepcopy(agent.history[k]))
 
@@ -99,8 +105,8 @@ def experiment(name,
         log["exp_name"] = base
         log["num_experiments"] = num_experiments
         log["exp_num_steps"] = num_steps
-        log["env"] = env.reset()
-        log["agent"] = agent.reset()
+        log["env"] = env
+        log["agent"] = agent
 
         # Save the log to the results
         results.append(log)
@@ -113,19 +119,16 @@ def experiment(name,
         return results
 
 
-def competitive_experiment(name,
-                           preds,
-                           preys,
-                           pred_states,
-                           prey_states,
-                           env,
-                           num_steps=1,
-                           num_experiments=1,
-                           seed=None,
-                           split_state=False,
-                           dump=True,
-                           env_kwargs=None):
-    """Run an experiment, with multiple agents. 
+def multi_experiment(name,
+                     agents,
+                     env,
+                     num_steps=1,
+                     num_experiments=1,
+                     seed=None,
+                     split_state=False,
+                     dump=True,
+                     env_kwargs=None):
+    """Run a multi-agent experiment. Targets can also be agents. 
     
     Note: by default the experiment log gets saved to 'name' and this
     function returns None: To return the exp_data, set dump=False.
@@ -139,72 +142,59 @@ def competitive_experiment(name,
         else:
             env = Env()
 
+    # # Parse agent
+    # if isinstance(agent, str):
+    #     Agent = getattr(agent_gym, agent)
+    #     if agent_kwargs is not None:
+    #         agent = Agent(**agent_kwargs)
+    #     else:
+    #         agent = Agent()
+
     # Pretty name
     base = os.path.basename(name)
     base = os.path.splitext(base)[0]
 
-    # Seed?
+    # Seed
     if seed is not None:
-        # Seed agents w/ unique
-        for i in range(preds):
-            preds[i].seed(seed + i)
-        for i in range(preys):
-            preys[i].seed(seed + i)
-        # Seed world
+        [agent.seed(seed + i) for i, agent in enumerate(agents)]
         env.seed(seed)
 
     # Add one log for each exp
+    # to the results list
     results = []
 
-    # -----------------------------------------------------------------------
     # !
     for k in tqdm(range(num_experiments), desc=base):
         # Create an exp log
         log = defaultdict(list)
 
-        # Reset players
-        [agent.reset() for agent in preds]
-        [agent.reset() for agent in preys]
+        # Reset agents...
+        [agent.reset() for agent in agents]
 
-        # Init locations
-        for agent, state in zip(preys, prey_states):
-            agent.state = state
-        for agent, state in zip(preys, pred_states):
-            agent.state = state
-
-        # Reset world
+        # and the world
         env.reset()
         state, reward, done, info = env.last()
 
         # Run experiment, for at most num_steps
         for n in range(1, num_steps):
-            # ---------------------------------------------------------------
-            # Step prey
-            targets, values = [], []
-            for i, agent in enumerate(preys):
-                # !
-                action = agent(state)
-                env.step(action)
-                state, reward, done, info = env.last()
+            for i, agent in enumerate(agents):
+                # The dead don't step
+                if i in env.dead:
+                    continue
 
-                # Add new location
-                if split_state:
-                    targets.append(state[0])
-                    values.append(agent.value)
-                else:
-                    targets.append(state)
-                    values.append(agent.value)
+                # Step the agent
+                action = agent(state)
+                state, reward, done, info = env.step(action, i)
+                if reward > 0:
+                    print(n, i, reward, state[i])
 
                 # Learn? Might do nothing.
                 agent.update(state, reward, info)
 
-                # Log agent step
-                log["exp_prey_code"].append(deepcopy(i))
-                log["exp_pred_code"].append(None)
-
-                # Log exp
-                log["exp_step"].append(deepcopy(n))
+                # Log step env
                 log["num_experiment"].append(deepcopy(k))
+                log["exp_step"].append(deepcopy(n))
+                log["exp_agent"].append(deepcopy(i))
                 if split_state:
                     pos, obs = state
                     log["exp_state"].append(deepcopy(pos))
@@ -215,63 +205,25 @@ def competitive_experiment(name,
                 log["exp_reward"].append(deepcopy(reward))
                 log["exp_info"].append(deepcopy(info))
 
-                # Force end?
+                # ?
                 if done:
                     break
 
-            # Update targets and values (aka prey)
-            env.add_targets(targets,
-                            values,
-                            detection_radius=env.detection_radius,
-                            kd_kwargs=env.kd_kwargs,
-                            p_target=env.p_target)
-
-            # ---------------------------------------------------------------
-            # Step preds
-            for i, agent in enumerate(preds):
-                # !
-                action = agent(state)
-                env.step(action)
-                state, reward, done, info = env.last()
-
-                # Learn? Might do nothing.
-                agent.update(state, reward, info)
-
-                # Log agent
-                log["exp_prey_code"].append(None)
-                log["exp_pred_code"].append(deepcopy(i))
-
-                # Log exp
-                log["exp_step"].append(deepcopy(n))
-                log["num_experiment"].append(deepcopy(k))
-                if split_state:
-                    pos, obs = state
-                    log["exp_state"].append(deepcopy(pos))
-                    log["exp_obs"].append(deepcopy(obs))
-                else:
-                    log["exp_state"].append(deepcopy(state))
-                log["exp_action"].append(deepcopy(action))
-                log["exp_reward"].append(deepcopy(reward))
-                log["exp_info"].append(deepcopy(info))
-
-        # -------------------------------------------------------------------
-        # Log full agent history
-        for k in agent.history.keys():
-            log[k].extend(deepcopy(agent.history[k]))
+        # Log agents history
+        log["agent_history"] = []
+        for agent in agents:
+            log["agent_history"].append(agent.history)
 
         # Save agent and env
-        log["multi_exp"] = True  # Tag for analysis
         log["exp_name"] = base
         log["num_experiments"] = num_experiments
         log["exp_num_steps"] = num_steps
-        log["env"] = env.reset()
-        log["preds"] = [agent.reset() for agent in preds]
-        log["preys"] = [agent.reset() for agent in preys]
+        log["env"] = env
+        log["agent"] = agent
 
         # Save the log to the results
         results.append(log)
 
-    # -----------------------------------------------------------------------
     if dump:
         if not name.endswith(".pkl"):
             name += ".pkl"

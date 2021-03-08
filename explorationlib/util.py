@@ -18,3 +18,8 @@ def load(filename='checkpoint.pkl'):
 def select_exp(exp_data, num_experiment):
     """Select all data for a single experiment `n`"""
     return exp_data[num_experiment]
+
+
+def select_agent(exp_data, num_agent, num_experiment):
+    """Select an agent's from a competitive experiment"""
+    return exp_data[num_experiment]["agent_history"][num_agent]

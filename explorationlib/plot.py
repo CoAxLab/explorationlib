@@ -166,9 +166,10 @@ def plot_position2d(exp_data,
                     alpha=1.0,
                     label=None,
                     title=None,
+                    competitive=True,
+                    var_name="exp_state",
                     ax=None):
     # fmt
-    var_name = "exp_state"
     state = np.vstack(exp_data[var_name])
 
     # Create a fig obj?
@@ -187,6 +188,59 @@ def plot_position2d(exp_data,
     if title is not None:
         ax.set_title(title)
     if label is not None:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    return ax
+
+
+def plot_positions2d(exp_data,
+                     num_agents,
+                     boundary=(1, 1),
+                     figsize=(3, 3),
+                     colors=None,
+                     alpha=1.0,
+                     labels=None,
+                     title=None,
+                     competitive=True,
+                     var_name="exp_state",
+                     ax=None):
+    # fmt
+    states_vec = exp_data[var_name]
+    states = [list() for _ in range(num_agents)]
+
+    # defaults
+    if colors is None:
+        colors = [None for _ in range(num_agents)]
+    if labels is None:
+        labels = [None for _ in range(num_agents)]
+
+    # repack
+    for s in states_vec:
+        for n in range(num_agents):
+            states[n].append(s[n])
+    states = [np.vstack(state) for state in states]
+
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # !
+    for i, state in enumerate(states):
+        ax.plot(state[:, 0],
+                state[:, 1],
+                color=colors[i],
+                label=labels[i],
+                alpha=alpha)
+    ax.set_xlim(-boundary[0], boundary[0])
+    ax.set_ylim(-boundary[1], boundary[1])
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+
+    # Labels, legends, titles?
+    if title is not None:
+        ax.set_title(title)
+    if labels[0] is not None:
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     return ax

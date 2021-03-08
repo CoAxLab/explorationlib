@@ -143,10 +143,14 @@ class Field(gym.Env):
 
         # Test proximity
         if dist <= self.detection_radius:
-            # Get it the value...
+            # What's the value?
             value = self.values[ind]
 
-            # do a voin flip to set it as reward.
+            # Ignore None
+            if value is None:
+                self.reward = 0.0
+
+            # Coin flip
             if self.np_random.rand() <= self.p_target:
                 self.reward = value
             else:
@@ -202,6 +206,139 @@ class ViswanathanField500000(Field):
         targets = uniform_targets(num_targets, target_boundary)
         values = constant_values(targets, 1)
         return targets, values
+
+
+class CompetitiveField(gym.Env):
+    def __init__(self, num_agents=2):
+        self.num_agents = num_agents
+        self.info = {}
+        self.reward = 0.0
+        self.done = False
+
+        self.detection_radius = None
+        self.targets = None
+        self.values = None
+        self.seed()
+        self.reset()
+
+    def step(self, action, n):
+        # Step
+        self.n = n
+        self.state[n] += action
+
+        # Targets can't get rewarded
+        if n not in self.target_index:
+            self.update_targets(n)
+            self.check_targets(n)
+        else:
+            self.reward = 0.0
+
+        # -
+        return self.last()
+
+    def last(self):
+        """Return last: (state, reward, done, info)"""
+        return (self.state, self.reward, self.done, self.info)
+
+    def add_targets(self,
+                    index,
+                    targets,
+                    values,
+                    detection_radius=1,
+                    p_target=1.0):
+        """Add targets and their values"""
+        self.target_index = index
+
+        # Sanity
+        if len(index) != len(targets):
+            raise ValueError("index and targets must match.")
+        if len(targets) != len(values):
+            raise ValueError("targets and values must match.")
+
+        # Will it be there?
+        self.p_target = p_target
+
+        # Store raw targets simply (list)
+        self.num_targets = len(targets)
+        self.targets = targets
+        self.values = values
+        self.detection_radius = detection_radius
+
+        # Step targets
+        for i, t in zip(self.target_index, self.targets):
+            self.step(t, i)
+
+        # Init tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def check_targets(self, n):
+        """Check for targets, and update self.reward if
+        some are found in the given detection_radius.
+
+        Note: the deault d_func is the euclidian distance. 
+        To override provide a func(x, y) -> distance.
+        """
+        if n not in self.target_index:
+            # Short circuit if no targets
+            if self.targets is None:
+                return None
+
+            # Reinit reward. Assume we are not at a target
+            self.reward = 0.0
+
+            # How far are we and is it close enough to
+            # generate a reward? AKA are we at a target?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd.query(state, k=1)
+
+            # Care about the closest; Fmt
+            dist = float(dist[0])
+            ind = int(ind[0])
+            code = self.target_index[ind]
+
+            # Test proximity
+            if code not in self.dead:
+                if dist <= self.detection_radius:
+                    # Detection is death
+                    self.dead.append(code)
+
+                    # What's the value?
+                    value = self.values[ind]
+
+                    # Coin flip
+                    if self.np_random.rand() <= self.p_target:
+                        self.reward = value
+                    else:
+                        self.reward = 0.0
+
+    def update_targets(self, n):
+        if n in self.target_index:
+            i = self.target_index.index(n)
+            self.targets[i] = self.state[n]
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def reset(self):
+        self.n = 0
+        # Reinit
+        self.state = [np.zeros(2) for _ in range(self.num_agents)]
+
+        # Restep targets
+        if self.targets is not None:
+            for i, t in zip(self.target_index, self.targets):
+                self.step(t, i)
+
+        # Revive the dead!
+        self.dead = []
+
+        # Reset
+        self.reward = 0.0
+        self.last()
+
+    def render(self, mode='human', close=False):
+        pass
 
 
 # ---------------------------------------------------------------------------
