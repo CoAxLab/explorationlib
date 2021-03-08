@@ -375,6 +375,38 @@ class Grid(Field):
         self.last()
 
 
+class CompetitiveGrid(CompetitiveField):
+    """A discrete open-ended grid-world."""
+    def __init__(self, num_agents=2, mode="cardinal"):
+        super().__init__(num_agents=num_agents)
+        self.mode = mode
+
+    def _card_step(self, action, n):
+        # Interpret action as a cardinal direction
+        action = int(action)
+        if action == 0:
+            super().step((0, 1), n)
+        elif action == 1:
+            super().step((0, -1), n)
+        elif action == 2:
+            super().step((1, 0), n)
+        elif action == 3:
+            super().step((-1, 0), n)
+
+    def step(self, action, n):
+        if self.mode == "cardinal":
+            self._card_step(action, n)
+        else:
+            action = [int(a) for a in action]
+            super().step(action, n)
+
+        return self.last()
+
+    def reset(self):
+        super().reset()
+        super().last()
+
+
 class ScentGrid(Grid):
     """Am open-grid, with scent"""
     def __init__(self, mode="cardinal"):
