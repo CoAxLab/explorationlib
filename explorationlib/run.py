@@ -185,8 +185,6 @@ def multi_experiment(name,
                 # Step the agent
                 action = agent(state)
                 state, reward, done, info = env.step(action, i)
-                if reward > 0:
-                    print(n, i, reward, state[i])
 
                 # Learn? Might do nothing.
                 agent.update(state, reward, info)
