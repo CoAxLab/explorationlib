@@ -693,6 +693,76 @@ class GradientDiffusionDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
+class DiffusionCardinal(Agent2d):
+    """Diffusion search, on a NSEW grid"""
+    def __init__(self, min_length=1, scale=2):
+        super().__init__()
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        self.scale = float(scale)
+        self.min_length = int(min_length)
+        self.step_size = 1
+        self.reset()
+
+    def _angle(self, state):
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = self.np_random.exponential(self.scale)
+            l = int(l)
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+
+        # Keep going?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        # Turn?
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
+            self.step = self.step_size
+
+        # Step
+        action = self.angle
+        self.total_distance += self.step
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self._l(np.zeros(2))
+        self.angle = self._angle(np.zeros(2))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.step = 0
+        self.total_distance = 0.0
+        self.history = defaultdict(list)
+
+
 class GradientDiffusionCardinal(Agent2d):
     """Diffusion search, but the sense/obs gradient 
     effects turn probability. 
