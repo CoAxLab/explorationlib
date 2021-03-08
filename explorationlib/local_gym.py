@@ -299,13 +299,14 @@ class CompetitiveField(gym.Env):
             # Test proximity
             if code not in self.dead:
                 if dist <= self.detection_radius:
+                    # Detection is death
+                    self.dead.append(code)
+
                     # What's the value?
                     value = self.values[ind]
 
                     # Coin flip
                     if self.np_random.rand() <= self.p_target:
-                        # Detection is death
-                        self.dead.append(code)
                         self.reward = value
                     else:
                         self.reward = 0.0
@@ -343,7 +344,7 @@ class CompetitiveField(gym.Env):
 # ---------------------------------------------------------------------------
 class Grid(Field):
     """A discrete open-ended grid-world."""
-    def __init__(self, mode="cardinal"):
+    def __init__(self, mode="discrete"):
         super().__init__()
         self.mode = mode
 
@@ -361,7 +362,7 @@ class Grid(Field):
         super().check_targets()
 
     def step(self, action):
-        if self.mode == "cardinal":
+        if self.mode == "discrete":
             self._card_step(action)
         else:
             action = [int(a) for a in action]
@@ -376,7 +377,7 @@ class Grid(Field):
 
 class CompetitiveGrid(CompetitiveField):
     """A discrete open-ended grid-world."""
-    def __init__(self, num_agents=2, mode="cardinal"):
+    def __init__(self, num_agents=2, mode="discrete"):
         super().__init__(num_agents=num_agents)
         self.mode = mode
 
@@ -393,7 +394,7 @@ class CompetitiveGrid(CompetitiveField):
             super().step((-1, 0), n)
 
     def step(self, action, n):
-        if self.mode == "cardinal":
+        if self.mode == "discrete":
             self._card_step(action, n)
         else:
             action = [int(a) for a in action]
@@ -408,7 +409,7 @@ class CompetitiveGrid(CompetitiveField):
 
 class ScentGrid(Grid):
     """Am open-grid, with scent"""
-    def __init__(self, mode="cardinal"):
+    def __init__(self, mode="discrete"):
         super().__init__(mode=mode)
         self.scent = None
         self.scent_fn = None

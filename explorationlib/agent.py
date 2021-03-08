@@ -165,7 +165,7 @@ class DiffusionDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
-class DiffusionMemoryCardinal(DiffusionDiscrete):
+class DiffusionMemoryGrid(DiffusionDiscrete):
     """Diffusion search, with a short-term memory"""
     def __init__(self, min_length=1, scale=0.1, **kd_kwargs):
         super().__init__(num_actions=4, min_length=min_length, scale=scale)
@@ -447,7 +447,7 @@ class AccumulatorGradientDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
-class AccumulatorGradientCardinal(Agent2d):
+class AccumulatorGradientGrid(Agent2d):
     """Incremental search, using evidence accumulation to 
     estimate the gradient, which in turn effects turn probability. 
     
@@ -693,7 +693,7 @@ class GradientDiffusionDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
-class DiffusionCardinal(Agent2d):
+class DiffusionGrid(Agent2d):
     """Diffusion search, on a NSEW grid"""
     def __init__(self, min_length=1, scale=2):
         super().__init__()
@@ -763,7 +763,7 @@ class DiffusionCardinal(Agent2d):
         self.history = defaultdict(list)
 
 
-class GradientDiffusionCardinal(Agent2d):
+class GradientDiffusionGrid(Agent2d):
     """Diffusion search, but the sense/obs gradient 
     effects turn probability. 
     
