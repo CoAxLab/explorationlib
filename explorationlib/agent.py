@@ -165,81 +165,82 @@ class DiffusionDiscrete(Agent2d):
         self.history = defaultdict(list)
 
 
-class DiffusionMemoryGrid(DiffusionDiscrete):
-    """Diffusion search, with a short-term memory"""
-    def __init__(self, min_length=1, scale=0.1, **kd_kwargs):
-        super().__init__(num_actions=4, min_length=min_length, scale=scale)
-        self.possible_steps = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        self.memory = {}
-        self.kd_kwargs = kd_kwargs
+# TODO - Grid form please...
+# class DiffusionMemoryGrid(DiffusionDiscrete):
+#     """Diffusion search, with a short-term memory"""
+#     def __init__(self, min_length=1, scale=0.1, **kd_kwargs):
+#         super().__init__(num_actions=4, min_length=min_length, scale=scale)
+#         self.possible_steps = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+#         self.memory = {}
+#         self.kd_kwargs = kd_kwargs
 
-    def update(self, state, reward, info):
-        # A good memory has a reward
-        if np.nonzero(reward):
-            self.memory[state] = reward
-            self._positions = sorted(list(self.memory.keys()))
-            self._kd = KDTree(np.vstack(self._positions), **self.kd_kwargs)
-        # Only keep good memories
-        else:
-            del self.memory[state]
+#     def update(self, state, reward, info):
+#         # A good memory has a reward
+#         if np.nonzero(reward):
+#             self.memory[state] = reward
+#             self._positions = sorted(list(self.memory.keys()))
+#             self._kd = KDTree(np.vstack(self._positions), **self.kd_kwargs)
+#         # Only keep good memories
+#         else:
+#             del self.memory[state]
 
-    def forward(self, state):
-        """Step forward."""
-        # Go? Or turn?
-        if self.l > self.step:
-            self.step += self.step_size
-            self.num_step += 1
-        # Is memory empty?
-        elif len(self.memory) > 0:
-            # Find the best (closest memory)
-            state = np.atleast_2d(np.asarray(state))
-            _, ind = self._kd.query(state, k=1)
-            best = self._positions[ind]
+#     def forward(self, state):
+#         """Step forward."""
+#         # Go? Or turn?
+#         if self.l > self.step:
+#             self.step += self.step_size
+#             self.num_step += 1
+#         # Is memory empty?
+#         elif len(self.memory) > 0:
+#             # Find the best (closest memory)
+#             state = np.atleast_2d(np.asarray(state))
+#             _, ind = self._kd.query(state, k=1)
+#             best = self._positions[ind]
 
-            # Distance to best from all possible_steps?
-            candidates = [
-                np.linalg.norm(
-                    np.asarray(state) + np.asarray(s), np.asarray(best))
-                for s in self.possible_steps
-            ]
+#             # Distance to best from all possible_steps?
+#             candidates = [
+#                 np.linalg.norm(
+#                     np.asarray(state) + np.asarray(s), np.asarray(best))
+#                 for s in self.possible_steps
+#             ]
 
-            # Pick the nearest
-            ind = np.argmin(candidates)
+#             # Pick the nearest
+#             ind = np.argmin(candidates)
 
-            # Set direction
-            self.angle = self.possible_steps[ind]
-            self.l = self.step_size
-        else:
-            self.num_turn += 1
-            self.num_step = 0
-            self.l = self._l(state)
-            self.angle = self.possible_steps[self._angle(state)]
+#             # Set direction
+#             self.angle = self.possible_steps[ind]
+#             self.l = self.step_size
+#         else:
+#             self.num_turn += 1
+#             self.num_step = 0
+#             self.l = self._l(state)
+#             self.angle = self.possible_steps[self._angle(state)]
 
-        # Step
-        action = state + self.angle
-        self.step = self.step_size
-        self.total_distance += self.step
+#         # Step
+#         action = state + self.angle
+#         self.step = self.step_size
+#         self.total_distance += self.step
 
-        # Log
-        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
-        self.history["agent_angle"].append(deepcopy(self.angle))
-        self.history["agent_l"].append(deepcopy(self.l))
-        self.history["agent_total_l"].append(deepcopy(self.total_distance))
-        self.history["agent_step"].append(deepcopy(self.step_size))
-        self.history["agent_num_step"].append(deepcopy(self.num_step))
-        self.history["agent_action"].append(deepcopy(action))
+#         # Log
+#         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+#         self.history["agent_angle"].append(deepcopy(self.angle))
+#         self.history["agent_l"].append(deepcopy(self.l))
+#         self.history["agent_total_l"].append(deepcopy(self.total_distance))
+#         self.history["agent_step"].append(deepcopy(self.step_size))
+#         self.history["agent_num_step"].append(deepcopy(self.num_step))
+#         self.history["agent_action"].append(deepcopy(action))
 
-        return action
+#         return action
 
-    def reset(self):
-        """Reset all counters, turns, and steps"""
-        self.num_turn = 0
-        self.l = 0
-        self.angle = None
-        self.num_step = 0
-        self.step = 0
-        self.total_distance = 0.0
-        self.history = defaultdict(list)
+#     def reset(self):
+#         """Reset all counters, turns, and steps"""
+#         self.num_turn = 0
+#         self.l = 0
+#         self.angle = None
+#         self.num_step = 0
+#         self.step = 0
+#         self.total_distance = 0.0
+#         self.history = defaultdict(list)
 
 
 class TruncatedLevyDiscrete(Agent2d):
@@ -464,22 +465,27 @@ class AccumulatorGradientGrid(Agent2d):
                  accumulate_sigma=1.0,
                  threshold=10.0,
                  p_neg=0.8,
-                 p_pos=0.2):
+                 p_pos=0.2,
+                 step_size=1):
         super().__init__()
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
 
+        self.min_length = int(min_length)
+        if self.min_length < 1:
+            raise ValueError("min_length must be >= 1")
         self.max_steps = int(max_steps)
+
         self.drift_rate = float(drift_rate)
         self.accumulate_sigma = float(accumulate_sigma)
         self.threshold = float(threshold)
-
-        self.min_length = int(min_length)
 
         self.p_pos = float(p_pos)
         self.p_neg = float(p_neg)
         self.last_obs = 0.0
         self.evidence = 0.0
-        self.step_size = 1
         self.reset()
 
     def _angle(self, state):
@@ -695,13 +701,19 @@ class GradientDiffusionDiscrete(Agent2d):
 
 class DiffusionGrid(Agent2d):
     """Diffusion search, on a NSEW grid"""
-    def __init__(self, min_length=1, scale=2):
+    def __init__(self, min_length=1, scale=2, step_size=1):
         super().__init__()
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
-        self.scale = float(scale)
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
+
         self.min_length = int(min_length)
-        self.step_size = 1
+        if self.min_length < 1:
+            raise ValueError("min_length must be >= 1")
+
+        self.scale = float(scale)
         self.reset()
 
     def _angle(self, state):
@@ -775,13 +787,18 @@ class GradientDiffusionGrid(Agent2d):
         super().__init__()
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
-        self.scale = float(scale)
-        self.min_length = int(min_length)
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
 
+        self.min_length = int(min_length)
+        if self.min_length < 1:
+            raise ValueError("min_length must be >= 1")
+
+        self.scale = float(scale)
         self.p_pos = float(p_pos)
         self.p_neg = float(p_neg)
         self.last_obs = 0.0
-        self.step_size = 1
         self.reset()
 
     def _angle(self, state):
@@ -991,6 +1008,136 @@ class Levy2d(Agent2d):
         self.step = 0
         self.total_distance = 0.0
         self.history = defaultdict(list)
+
+
+class LevyGrid(Agent2d):
+    """Levy search, on a NSEW grid"""
+    def __init__(self, min_length=1, exponent=2, step_size=1):
+        super().__init__()
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
+
+        self.min_length = int(min_length)
+        if self.min_length < 1:
+            raise ValueError("min_length must be >= 1")
+
+        self.exponent = exponent
+        self.renorm = (self.exponent - 1) / (self.min_length
+                                             **(1 - self.exponent))
+
+    def _angle(self, state):
+        """Sample NSEW"""
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            xi = self.np_random.rand()
+            l = int(self.renorm * np.power(xi, (-1 / self.exponent)))
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward."""
+
+        # Keep going?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        # Turn?
+        else:
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
+            self.step = self.step_size
+
+        # Step
+        action = self.angle
+        self.total_distance += self.step
+
+        # Log
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self._l(np.zeros(2))
+        self.angle = self._angle(np.zeros(2))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.step = 0
+        self.total_distance = 0.0
+        self.history = defaultdict(list)
+
+
+class FreezeLevyGrid(LevyGrid):
+    def __init__(self, p_freeze=0.5, min_length=1, exponent=2, step_size=1):
+        self.p_freeze = float(p_freeze)
+        self.num_freeze = 0
+        super().__init__(min_length, exponent, step_size)
+
+    def forward(self, state):
+        """Step forward."""
+        # Default
+        self.freeze = False
+
+        # Keep going?
+        if self.l > self.step:
+            self.step += self.step_size
+            self.num_step += 1
+        # Freeze or turn?
+        else:
+            if self.p_freeze > self.np_random.rand():
+                self.freeze = True
+                self.angle = (0, 0)  # Go no where
+                self.step = 0
+                self.l = 0
+                self.num_freeze += 1
+            else:
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
+                self.step = self.step_size
+
+        # Step
+        action = self.angle
+        self.total_distance += self.step
+
+        # Log
+        self.history["agent_freeze"].append(deepcopy(self.freeze))
+        self.history["agent_num_freeze"].append(deepcopy(self.num_freeze))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        self.num_freeze = 0
+        super().reset()
 
 
 class TruncatedLevy2d(Agent2d):
