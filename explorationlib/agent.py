@@ -735,7 +735,11 @@ class DiffusionGrid(Agent2d):
 
         # Keep going?
         if self.l > self.step:
+            # Step
             self.step += self.step_size
+            # Clip?
+            if self.step > self.l:
+                self.step = int(self.step - self.l)
             self.num_step += 1
         # Turn?
         else:
