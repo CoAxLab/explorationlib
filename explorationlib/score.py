@@ -58,49 +58,33 @@ def num_death(exp_data):
 
     # Find num of zeros -> deaths
     death = len(totals) - np.count_nonzero(totals)
-
     return death
 
 
 def first_reward(exp_data):
-    """Find the inverse time to first target.
-    
-    Citation
-    --------
-    Bénichou, O., Loverdo, C., Moreau, M. & Voituriez, R. Intermittent 
-    search strategies. Rev. Mod. Phys. 83, 81–129 (2011).
-    """
+    """Number of steps to first reward"""
 
     # Load?
     if isinstance(exp_data, str):
         exp_data = load(exp_data)
 
     # !
-    length_name = "agent_step"
     target_name = "exp_reward"
+    step_name = "exp_step"
 
+    # Get firsts
     firsts = []
-    for log in tqdm(exp_data, desc="first_reward"):
-        # Get
+    for log in tqdm(exp_data, desc="total_reward"):
         rewards = log[target_name]
-        steps = log[length_name]
-
-        # Short circuit if no targets...
-        if np.isclose(np.sum(rewards), 0.0):
-            firsts.append(0.0)
-            continue
-
-        # Time it takes to find the
-        # first target/reward
-        time = 1
-        for r, l in zip(rewards, steps):
-            if np.isclose(r, 0.0):
-                time += l
-            else:
-                firsts.append(1 / time)
+        steps = log[step_name]
+        t = 0
+        for r, s in zip(rewards, steps):
+            if r > 0:
+                t = s
                 break
+        firsts.append(t)
 
-        return firsts
+    return firsts
 
 
 def search_efficiency(exp_data):
