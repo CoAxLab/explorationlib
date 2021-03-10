@@ -217,6 +217,7 @@ class CompetitiveField(gym.Env):
 
         self.detection_radius = None
         self.targets = None
+        self.initial_targets = None
         self.values = None
         self.seed()
         self.reset()
@@ -225,13 +226,10 @@ class CompetitiveField(gym.Env):
         # Step
         self.n = n
         self.state[n] += action
-
-        # Targets can't get rewarded
-        if n not in self.target_index:
-            self.update_targets(n)
-            self.check_targets(n)
-        else:
-            self.reward = 0.0
+        # Update/check targets
+        self.update_targets(n)
+        self.reward = 0.0
+        self.check_targets(n)
 
         # -
         return self.last()
@@ -260,7 +258,8 @@ class CompetitiveField(gym.Env):
 
         # Store raw targets simply (list)
         self.num_targets = len(targets)
-        self.targets = targets
+        self.initial_targets = targets
+        self.targets = deepcopy(self.initial_targets)
         self.values = values
         self.detection_radius = detection_radius
 
@@ -326,7 +325,8 @@ class CompetitiveField(gym.Env):
         self.state = [np.zeros(2) for _ in range(self.num_agents)]
 
         # Restep targets
-        if self.targets is not None:
+        if self.initial_targets is not None:
+            self.targets = deepcopy(self.initial_targets)
             for i, t in zip(self.target_index, self.targets):
                 self.step(t, i)
 
