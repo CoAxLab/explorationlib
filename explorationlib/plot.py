@@ -130,7 +130,10 @@ def plot_targets2d(env,
         return None
 
     # Fmt
-    vec = np.vstack(env.targets)
+    try:
+        vec = np.vstack(env.initial_targets)
+    except AttributeError:
+        vec = np.vstack(env.targets)
 
     # Create a fig obj?
     if ax is None:
