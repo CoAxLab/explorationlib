@@ -185,15 +185,23 @@ def multi_experiment(name,
                 log["num_experiment"].append(deepcopy(k))
                 log["exp_step"].append(deepcopy(n))
                 log["exp_agent"].append(deepcopy(i))
+                log["exp_action"].append(deepcopy(action))
+                log["exp_reward"].append(deepcopy(reward))
+                log["exp_info"].append(deepcopy(info))
+
+                # Lod dead, if env has this
+                try:
+                    log["exp_env_dead"].append(deepcopy(env.dead))
+                except AttributeError:
+                    pass
+
+                # Are there senses obs?
                 if split_state:
                     pos, obs = state
                     log["exp_state"].append(deepcopy(pos))
                     log["exp_obs"].append(deepcopy(obs))
                 else:
                     log["exp_state"].append(deepcopy(state))
-                log["exp_action"].append(deepcopy(action))
-                log["exp_reward"].append(deepcopy(reward))
-                log["exp_info"].append(deepcopy(info))
 
                 # ?
                 if done:
