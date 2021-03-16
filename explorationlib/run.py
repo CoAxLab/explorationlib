@@ -91,8 +91,11 @@ def experiment(name,
             if done:
                 break
 
+        # Save agent and env
+        log["exp_agent"] = deepcopy(agent)
+
         # Log full agent history
-        # TODO - someday updatee all code to save comp and reg exps the same
+        # TODO - someday update all code to save comp and reg exps the same
         # way, like this
         # log["agent_history"] = []
         # log["agent_history"].append(agent.history)
@@ -101,15 +104,14 @@ def experiment(name,
         for k in agent.history.keys():
             log[k].extend(deepcopy(agent.history[k]))
 
-        # Save agent and env
-        log["exp_name"] = base
-        log["num_experiments"] = num_experiments
-        log["exp_num_steps"] = num_steps
-        log["env"] = env
-        log["agent"] = agent
-
         # Save the log to the results
         results.append(log)
+
+    # Metadata
+    log["exp_name"] = base
+    log["num_experiments"] = num_experiments
+    log["exp_num_steps"] = num_steps
+    log["env"] = env
 
     if dump:
         if not name.endswith(".pkl"):
@@ -207,20 +209,22 @@ def multi_experiment(name,
                 if done:
                     break
 
+        # Save agent and env
+        log["exp_agent"] = deepcopy(agent)
+
         # Log agents history
         log["agent_history"] = []
         for agent in agents:
             log["agent_history"].append(agent.history)
 
-        # Save agent and env
-        log["exp_name"] = base
-        log["num_experiments"] = num_experiments
-        log["exp_num_steps"] = num_steps
-        log["env"] = env
-        log["agent"] = agent
-
         # Save the log to the results
         results.append(log)
+
+    # Metadata
+    log["exp_name"] = base
+    log["num_experiments"] = num_experiments
+    log["exp_num_steps"] = num_steps
+    log["env"] = env
 
     if dump:
         if not name.endswith(".pkl"):
