@@ -89,6 +89,143 @@ def show_gif(name):
 #     return camera
 
 
+def plot_bandit(env,
+                figsize=(3, 3),
+                color="black",
+                alpha=0.6,
+                title=None,
+                ax=None):
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # Fmt
+    probs = np.asarray(env.p_dist)
+    values = np.asarray(env.r_dist)
+    expected_value = probs * values
+    names = list(range(env.n_bandits))
+
+    # !
+    plt.bar(names, expected_value, color=color, alpha=alpha)
+    plt.xlabel("Arm")
+    plt.ylabel("Expected value")
+    plt.tight_layout()
+    sns.despine()
+
+    # titles?
+    if title is not None:
+        ax.set_title(title)
+
+    return ax
+
+
+def plot_bandit_critic(critic,
+                       figsize=(3, 3),
+                       color="black",
+                       alpha=0.6,
+                       title=None,
+                       ax=None):
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # Fmt
+    values = critic.model.values()
+    names = list(range(critic.num_inputs))
+
+    # !
+    plt.bar(names, values, color=color, alpha=alpha)
+    plt.xlabel("Arm")
+    plt.ylabel("Learned value")
+    plt.tight_layout()
+    sns.despine()
+
+    # titles?
+    if title is not None:
+        ax.set_title(title)
+
+    return ax
+
+
+def plot_bandit_actions(exp_data,
+                        max_steps=None,
+                        figsize=(3, 3),
+                        s=1,
+                        color="black",
+                        alpha=1.0,
+                        label=None,
+                        title=None,
+                        ax=None):
+    # fmt
+    actions = np.asarray(exp_data["exp_action"])
+    steps = np.asarray(exp_data["exp_step"])
+    if max_steps is not None:
+        mask = steps <= max_steps
+        actions = actions[mask]
+        steps = steps[mask]
+
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    # !
+    ax.scatter(steps, actions, s=s, color=color, label=label, alpha=alpha)
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Arm")
+
+    # Labels, legends, titles?
+    if title is not None:
+        ax.set_title(title)
+    if label is not None:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    return ax
+
+
+def plot_bandit_hist(exp_data,
+                     max_steps=None,
+                     figsize=(3, 3),
+                     bins=None,
+                     density=True,
+                     color="black",
+                     alpha=1.0,
+                     label=None,
+                     title=None,
+                     ax=None):
+    # fmt
+    actions = np.asarray(exp_data["exp_action"])
+    steps = np.asarray(exp_data["exp_step"])
+    if max_steps is not None:
+        mask = steps <= max_steps
+        actions = actions[mask]
+        steps = steps[mask]
+
+    # Create a fig obj?
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+    ax.hist(actions,
+            bins=bins,
+            color=color,
+            alpha=alpha,
+            density=density,
+            label=label)
+    ax.set_xlabel("Arm")
+    ax.set_ylabel("Count")
+
+    # Labels, legends, titles?
+    if title is not None:
+        ax.set_title(title)
+    if label is not None:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    return ax
+
+
 def plot_scent_grid(env,
                     figsize=(3, 3),
                     boundary=(1, 1),
