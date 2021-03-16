@@ -73,7 +73,7 @@ def experiment(name,
             state, reward, done, info = env.last()
 
             # Learn? Might do nothing.
-            agent.update(state, reward, info)
+            agent.update(state, action, reward, info)
 
             # Log step env
             log["exp_step"].append(deepcopy(n))
@@ -179,7 +179,7 @@ def multi_experiment(name,
                 state, reward, done, info = env.step(action, i)
 
                 # Learn? Might do nothing.
-                agent.update(state[i], reward, info)
+                agent.update(state[i], action, reward, info)
 
                 # Log step env
                 log["num_experiment"].append(deepcopy(k))

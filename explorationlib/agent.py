@@ -1,9 +1,367 @@
 import numpy as np
 
 from copy import deepcopy
-from scipy.stats import powerlaw
 from collections import defaultdict
+from collections import OrderedDict
+
+from scipy.special import softmax
+from scipy.stats import powerlaw
 from sklearn.neighbors import KDTree
+
+
+# -----------------------------------------------------------------------------
+# RL - bandits
+def R_update(state, R, critic, lr):
+    """TD-ish update"""
+    update = lr * (R - critic(state))
+    critic.update(state, update)
+
+    return critic
+
+
+def E_update(state, E, critic, lr):
+    """Bellman update"""
+    update = lr * E
+    critic.replace(state, update)
+
+    return critic
+
+
+class BanditAgent:
+    def __init__(self):
+        self.seed()
+        self.history = defaultdict(list)
+
+    def seed(self, seed=None):
+        """Init RandomState"""
+        self.np_random = np.random.RandomState(seed)
+        return [seed]
+
+    def reset(self):
+        raise NotImplementedError("Mandatory to implement...")
+
+
+class BanditActorCritic(BanditAgent):
+    """Actor-Critic agent"""
+    def __init__(self, actor, critic, lr_reward=0.1):
+        super().__init__()
+
+        self.actor = actor
+        self.critic = critic
+        self.lr_reward = float(lr_reward)
+
+    def __call__(self, state):
+        return self.forward(state)
+
+    def update(self, state, action, reward, info):
+        self.critic_R = R_update(action, reward, self.critic, self.lr_reward)
+
+    def forward(self, state):
+        action = self.actor(list(self.critic.model.values()))
+        return action
+
+    def reset(self):
+        self.actor.reset()
+        self.critic.reset()
+
+
+class BanditWSLS(BanditAgent):
+    """A Win-stay lose-switch agent"""
+    def __init__(self, actor_E, critic_E, actor_R, critic_R, boredom=0.0):
+        super().__init__()
+
+        self.actor_R = actor_R
+        self.critic_R = critic_R
+        self.actor_E = actor_E
+        self.critic_E = critic_E
+        self.boredom = boredom
+
+    def __call__(self, E, R):
+        return self.forward(E, R)
+
+    def update(self, action, E, R, lr_R):
+        self.critic_R = R_update(action, R, self.critic_R, lr_R)
+        self.critic_E = E_update(action, E, self.critic_E, lr=1)
+
+    def forward(self, E, R):
+        if (E - self.boredom) > R:
+            critic = self.critic_E
+            actor = self.actor_E
+            policy = 0
+        else:
+            critic = self.critic_R
+            actor = self.actor_R
+            policy = 1
+
+        return actor, critic, policy
+
+    def reset(self):
+        self.actor_R.reset()
+        self.critic_R.reset()
+        self.actor_E.reset()
+        self.critic_E.reset()
+
+
+class BanditWSLSh(BanditWSLS):
+    """Win-stay lose-switch policy control, for homeostatic rewards"""
+    def __init__(self, actor_E, critic_E, actor_R, critic_R, boredom=0.0):
+        super().__init__(actor_E, critic_E, actor_R, critic_R, boredom=boredom)
+
+    def forward(self, E, R):
+        if (E - self.boredom) >= R:
+            critic = self.critic_E
+            actor = self.actor_E
+            policy = 0
+        else:
+            critic = self.critic_R
+            actor = self.actor_R
+            policy = 1
+
+        return actor, critic, policy
+
+
+class Critic(BanditAgent):
+    """Template for a Critic agent"""
+    def __init__(self, num_inputs, default_value):
+        super().__init__()
+
+        self.num_inputs = num_inputs
+        self.default_value = default_value
+
+        self.model = OrderedDict()
+        for n in range(self.num_inputs):
+            self.model[n] = self.default_value
+
+    def __call__(self, state):
+        return self.forward(state)
+
+    def forward(self, state):
+        return self.model[state]
+
+    def update(self, state, update):
+        self.model[state] += update
+
+    def replace(self, state, update):
+        self.model[state] = update
+
+    def state_dict(self):
+        return self.model
+
+    def load_state_dict(self, state_dict):
+        self.model = state_dict
+
+    def reset(self):
+        self.model = OrderedDict()
+        for n in range(self.num_inputs):
+            self.model[n] = self.default_value
+
+
+class RandomActor(BanditAgent):
+    def __init__(self, num_actions):
+        super().__init__()
+        self.num_actions = num_actions
+        self.actions = list(range(self.num_actions))
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        """Values are a dummy var. Pick at random"""
+        action = self.np_random.choice(self.actions)
+        return action
+
+    def reset(self):
+        pass
+
+
+class BoundedRandomActor(BanditAgent):
+    def __init__(self, num_actions, bound=100):
+        super().__init__()
+        self.num_actions = num_actions
+        self.bound = int(bound)
+        self.actions = list(range(self.num_actions))
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        """Values are a dummy var. Pick at random"""
+        self.action_count += 1
+        if self.action_count < self.bound:
+            action = self.np_random.choice(self.actions)
+        else:
+            action = np.argmax(values)
+
+        return action
+
+    def reset(self):
+        self.action_count = 0
+
+
+class SequentialActor(BanditAgent):
+    """Choose actions in sequence; ignore value"""
+    def __init__(self, num_actions, initial_action=0):
+        super().__init__()
+
+        self.num_actions = int(num_actions)
+        self.initial_action = int(initial_action)
+        self.action_count = self.initial_action
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        self.action_count += 1
+        action = self.action_count % self.num_actions
+
+        return action
+
+    def reset(self):
+        self.action_count = self.initial_action
+
+
+class BoundedSequentialActor(BanditAgent):
+    """Choose actions in sequence; ignore value"""
+    def __init__(self, num_actions, bound=100, initial_action=0):
+        super().__init__()
+
+        self.num_actions = int(num_actions)
+        self.initial_action = int(initial_action)
+        self.action_count = self.initial_action
+        self.bound = int(bound)
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        self.action_count += 1
+
+        if self.action_count < self.bound:
+            action = self.action_count % self.num_actions
+        else:
+            action = np.argmax(values)
+
+        return action
+
+    def reset(self):
+        self.action_count = self.initial_action
+
+
+class DeterministicActor(BanditAgent):
+    """Choose the best, with heuristics for ties"""
+    def __init__(self, num_actions, tie_break='next', boredom=0.0):
+        super().__init__()
+
+        self.num_actions = num_actions
+        self.tie_break = tie_break
+        self.boredom = boredom
+        self.action_count = 0
+        self.tied = False
+
+    def _is_tied(self, values):
+        # One element can't be a tie
+        if len(values) < 1:
+            return False
+
+        # Apply the threshold, rectifying values less than 0
+        t_values = [max(0, v - self.boredom) for v in values]
+
+        # Check for any difference, if there's a difference then
+        # there can be no tie.
+        tied = True  # Assume tie
+        v0 = t_values[0]
+        for v in t_values[1:]:
+            if np.isclose(v0, v):
+                continue
+            else:
+                tied = False
+        return tied
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        # Pick the best as the base case, ....
+        action = np.argmax(values)
+
+        # then check for ties.
+        #
+        # Using the first element is argmax's tie breaking strategy
+        if self.tie_break == 'first':
+            pass
+        # Round robin through the options for each new tie.
+        elif self.tie_break == 'next':
+            self.tied = self._is_tied(values)
+            if self.tied:
+                self.action_count += 1
+                action = self.action_count % self.num_actions
+        else:
+            raise ValueError("tie_break must be 'first' or 'next'")
+
+        return action
+
+    def reset(self):
+        self.action_count = 0
+        self.tied = False
+
+
+class EpsilonActor(BanditAgent):
+    def __init__(self, num_actions, epsilon=0.1, decay_tau=0.001):
+        super().__init__()
+
+        self.epsilon = epsilon
+        self.decay_tau = decay_tau
+        self.num_actions = num_actions
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def decay_epsilon(self):
+        self.epsilon -= (self.decay_tau * self.epsilon)
+
+    def forward(self, values):
+        # If values are zero, be random.
+        if np.isclose(np.sum(values), 0):
+            action = self.np_random.randint(0, self.num_actions, size=1)[0]
+            return action
+
+        # Otherwise, do Ep greedy
+        if self.np_random.rand() < self.epsilon:
+            action = self.np_random.randint(0, self.num_actions, size=1)[0]
+        else:
+            action = np.argmax(values)
+
+        return action
+
+    def reset(self):
+        pass
+
+
+class SoftmaxActor(BanditAgent):
+    def __init__(self, num_actions, temp=1):
+        super().__init__()
+
+        self.temp = temp
+        self.inv_temp = 1 / self.temp
+        self.num_actions = num_actions
+        self.actions = list(range(self.num_actions))
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        values = np.asarray(values)
+        probs = softmax(values * self.inv_temp)
+        action = self.np_random.choice(self.actions, p=probs)
+
+        return action
+
+    def reset(self):
+        pass
+
+
+# -----------------------------------------------------------------------------
+# Field - random, grad, simple memory
 
 
 class Agent2d:
