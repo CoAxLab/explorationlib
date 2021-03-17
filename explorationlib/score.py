@@ -1,24 +1,28 @@
 import numpy as np
+from scipy.stats import entropy
 from tqdm.autonotebook import tqdm
 
 from explorationlib.util import load
 from explorationlib.util import select_exp
 
 
-def average_reward(exp_data):
-    """Average targets found"""
+def action_entropy(exp_data, base=None):
+    """Entropy of the agent's actions"""
 
     # Load?
     if isinstance(exp_data, str):
         exp_data = load(exp_data)
 
-    target_name = "exp_reward"
-    averages = []
-    for log in tqdm(exp_data, desc="average_reward"):
-        rewards = log[target_name]
-        averages.append(np.mean(rewards))
+    target_name = "exp_action"
+    totals = []
+    for log in tqdm(exp_data, desc="action_entropy"):
+        actions = np.asarray(log[target_name])
+        _, counts = np.unique(actions, return_counts=True)
+        ent = entropy(counts, base=base)
 
-    return averages
+        totals.append(ent)
+
+    return totals
 
 
 def total_reward(exp_data):
