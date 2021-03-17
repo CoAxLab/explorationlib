@@ -104,7 +104,7 @@ def plot_bandit(env,
     probs = np.asarray(env.p_dist)
     values = np.asarray(env.r_dist)
     expected_value = probs * values
-    names = list(range(env.n_bandits))
+    names = [str(x) for x in range(env.n_bandits)]
 
     # !
     plt.bar(names, expected_value, color=color, alpha=alpha)
@@ -150,6 +150,7 @@ def plot_bandit_critic(critic,
 
 
 def plot_bandit_actions(exp_data,
+                        num_arms=4,
                         max_steps=None,
                         figsize=(3, 3),
                         s=1,
@@ -175,6 +176,9 @@ def plot_bandit_actions(exp_data,
     ax.scatter(steps, actions, s=s, color=color, label=label, alpha=alpha)
     ax.set_xlabel("Step")
     ax.set_ylabel("Arm")
+    ax.set_ylim((0, num_arms))
+    ax.set_yticks(list(range(0, num_arms)))
+    sns.despine()
 
     # Labels, legends, titles?
     if title is not None:
@@ -216,6 +220,7 @@ def plot_bandit_hist(exp_data,
             label=label)
     ax.set_xlabel("Arm")
     ax.set_ylabel("Count")
+    sns.despine()
 
     # Labels, legends, titles?
     if title is not None:
