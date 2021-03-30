@@ -153,47 +153,73 @@ class BanditUniform10(BanditEnv):
         return [seed]
 
 
-class BanditChange4(BanditEnv):
-    """Change the worst choice to the best BanditUniform4"""
+class BanditChange4:
+    """Change the best to the worst - BanditUniform4"""
     def __init__(self,
+                 num_change=60,
                  p_min=0.1,
                  p_max=0.3,
-                 p_best=0.99,
-                 p_org=0.6,
-                 org_best=2):
+                 p_best=0.6,
+                 p_change=0.1):
+        super().__init__()
 
         # Init
         self.num_arms = 4
+        self.num_change = num_change
+
         self.p_min = p_min
         self.p_max = p_max
         self.p_best = p_best
-        self.orginal = BanditUniform4(p_min=p_min,
-                                      p_max=p_max,
-                                      p_best=p_org,
-                                      best=org_best)
+        self.p_change = p_change
 
-        # Build p_dist from org
-        self.p_dist = deepcopy(self.orginal.p_dist)
-        self.best = [np.argmin(self.p_dist)]
-        self.p_dist[self.best[0]] = self.p_best
+        self.best = 2
+        self.orginal = BanditUniform4(p_min=self.p_min,
+                                      p_max=self.p_max,
+                                      p_best=self.best,
+                                      best=self.best)
+        self.change = deepcopy(self.orginal)
 
-        # Build r_dist
-        self.r_dist = [1] * self.num_arms
+    def step(self, action):
+        # Reset
+        self.state = 0
+        self.reward = 0
+        self.done = False
+        self.info = None
 
-        # !
-        BanditEnv.__init__(self, p_dist=self.p_dist, r_dist=self.r_dist)
+        # Step
+        if self.num_steps < self.num_change:
+            self.state, self.reward, self.done, {} = self.orginal.step(action)
+        else:
+            self.state, self.reward, self.done, {} = self.change.step(action)
+        self.num_steps += 1
+
+        # Return
+        return sself.state, self.reward, self.done, {}
+
+    def last(self):
+        return self.state, self.reward, self.done, {}
+
+    def reset(self):
+        self.num_steps = 0
+        self.orginal.reset()
+        self.change.reset()
 
     def seed(self, seed=None):
         # Set
         self.np_random, seed = seeding.np_random(seed)
-
-        # Build p_dist from seed
         self.orginal.seed(seed)
-        self.p_dist = deepcopy(self.orginal.p_dist)
-        self.best = [np.argmin(self.p_dist)]
-        self.p_dist[self.best[0]] = self.p_best
+
+        # Copy
+        self.change = deepcopy(self.orginal)
+
+        # Update
+        self.change.p_dist[self.best] = self.p_change
+        self.change.best = [np.argmax(self.change.p_dist)]
 
         return [seed]
+
+    def render(self, mode='human', close=False):
+        pass
 
 
 # -------------------------------------------------------------------------
