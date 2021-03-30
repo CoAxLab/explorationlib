@@ -91,8 +91,12 @@ def experiment(name,
             if done:
                 break
 
-        # Save agent and env
+        # Metadata
         log["exp_agent"] = deepcopy(agent)
+        log["exp_name"] = base
+        log["num_experiments"] = num_experiments
+        log["exp_num_steps"] = num_steps
+        log["exp_env"] = env
 
         # Log full agent history
         # TODO - someday update all code to save comp and reg exps the same
@@ -106,12 +110,6 @@ def experiment(name,
 
         # Save the log to the results
         results.append(log)
-
-    # Metadata
-    log["exp_name"] = base
-    log["num_experiments"] = num_experiments
-    log["exp_num_steps"] = num_steps
-    log["env"] = env
 
     if dump:
         if not name.endswith(".pkl"):
