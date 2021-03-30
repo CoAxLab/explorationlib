@@ -1211,7 +1211,7 @@ class GradientDiffusionGrid(Agent2d):
         super().__init__()
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
-        self.step_size = int(step_size)
+        self.step_size = 1
         if self.step_size < 1:
             raise ValueError("step musst be >= 1")
 
