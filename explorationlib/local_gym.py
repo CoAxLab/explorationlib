@@ -166,35 +166,42 @@ class BanditChange4:
         # Init
         self.num_arms = 4
         self.num_change = num_change
+        self.state = 0
+        self.reward = 0
+        self.done = False
 
         self.p_min = p_min
         self.p_max = p_max
         self.p_best = p_best
         self.p_change = p_change
 
+        # Original...
         self.best = 2
         self.orginal = BanditUniform4(p_min=self.p_min,
                                       p_max=self.p_max,
-                                      p_best=self.best,
+                                      p_best=self.p_best,
                                       best=self.best)
+        # Create change
         self.change = deepcopy(self.orginal)
+        self.change.p_dist[self.best] = self.p_change
+        self.change.best = [np.argmax(self.change.p_dist)]
 
     def step(self, action):
         # Reset
         self.state = 0
         self.reward = 0
         self.done = False
-        self.info = None
 
         # Step
         if self.num_steps < self.num_change:
-            self.state, self.reward, self.done, {} = self.orginal.step(action)
+            self.state, self.reward, self.done, _ = self.orginal.step(action)
         else:
-            self.state, self.reward, self.done, {} = self.change.step(action)
+            self.state, self.reward, self.done, _ = self.change.step(action)
+
         self.num_steps += 1
 
         # Return
-        return sself.state, self.reward, self.done, {}
+        return self.state, self.reward, self.done, {}
 
     def last(self):
         return self.state, self.reward, self.done, {}
