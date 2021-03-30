@@ -6,6 +6,30 @@ from explorationlib.util import load
 from explorationlib.util import select_exp
 
 
+def bandit_rmse(exp_data):
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    errors = []
+    for log in tqdm(exp_data, desc="bandit_rmse"):
+        # Predicted
+        env = log["exp_env"]
+        probs = np.asarray(env.p_dist)
+        values = np.asarray(env.r_dist)
+        predictions = probs * values
+
+        # Target
+        agent = log["exp_agent"]
+        targets = list(agent.critic.model.values())
+        targets = np.asarray(targets)
+        rmse = np.sqrt(((predictions - targets)**2).mean())
+
+        errors.append(rmse)
+
+    return errors
+
+
 def action_entropy(exp_data, base=None):
     """Entropy of the agent's actions"""
 
