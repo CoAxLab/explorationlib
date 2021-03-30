@@ -8,6 +8,10 @@ from scipy.special import softmax
 from scipy.stats import powerlaw
 from sklearn.neighbors import KDTree
 
+from explorationlib.memory import CountMemory
+from explorationlib.memory import EntropyMemory
+from explorationlib.memory import NoveltyMemory
+
 
 # -----------------------------------------------------------------------------
 # RL - bandits
@@ -122,7 +126,7 @@ class BanditWSLSh(BanditWSLS):
 
 class Critic(BanditAgent):
     """Template for a Critic agent"""
-    def __init__(self, num_inputs, default_value):
+    def __init__(self, num_inputs, default_value=0.0):
         super().__init__()
 
         self.num_inputs = num_inputs
@@ -154,6 +158,63 @@ class Critic(BanditAgent):
         self.model = OrderedDict()
         for n in range(self.num_inputs):
             self.model[n] = self.default_value
+
+
+class CriticUCB(Critic):
+    """Critic with a UCB bonus"""
+    def __init__(self, num_inputs, default_value=0.0, bonus_weight=1.0):
+        # Init base
+        super().__init__(num_inputs, default_value)
+        self.bonus_weight = float(bonus_weight)
+
+        # Init UCB
+        self.reset()
+
+    def forward(self, state):
+        # UCB bonus
+        bonus = ((2 * np.log(self.n + 1)) / self.memory(state))**(0.5)
+        bonus *= self.bonus_weight  # Scale
+
+        # Value est.
+        value = self.model[state] + bonus
+
+        # Step global count
+        self.n += 1
+
+        # !
+        # print(state, self.model[state], bonus)
+        return value
+
+    def reset(self):
+        self.memory = CountMemory()
+        self.n = 0
+
+
+class CriticNovelty(Critic):
+    """Critic with a novelty bonus"""
+    def __init__(self,
+                 num_inputs,
+                 default_value=0.0,
+                 novelty_bonus=1.0,
+                 bonus_weight=1.0):
+        # Init base
+        super().__init__(num_inputs, default_value)
+
+        # Init novelty (value of 1)
+        self.novelty_bonus = float(novelty_bonus)
+        self.bonus_weight = float(bonus_weight)
+        self.reset()
+
+    def forward(self, state):
+        # Novelty
+        bonus = self.memory(state)
+        bonus *= self.bonus_weight  # Scale
+        value = self.model[state] + bonus
+
+        return value
+
+    def reset(self):
+        self.memory = NoveltyMemory(bonus=self.novelty_bonus)
 
 
 class RandomActor(BanditAgent):
@@ -253,6 +314,7 @@ class DeterministicActor(BanditAgent):
         super().__init__()
 
         self.num_actions = num_actions
+        self.actions = list(range(self.num_actions))
         self.tie_break = tie_break
         self.boredom = boredom
         self.action_count = 0
@@ -305,6 +367,29 @@ class DeterministicActor(BanditAgent):
         self.tied = False
 
 
+class SoftmaxActor(BanditAgent):
+    """Softmax actions"""
+    def __init__(self, num_actions, beta=1.0):
+        super().__init__()
+
+        self.beta = float(beta)
+        self.num_actions = num_actions
+        self.actions = list(range(self.num_actions))
+
+    def __call__(self, values):
+        return self.forward(values)
+
+    def forward(self, values):
+        values = np.asarray(values)
+        probs = softmax(values * self.beta)
+        action = self.np_random.choice(self.actions, p=probs)
+
+        return action
+
+    def reset(self):
+        pass
+
+
 class EpsilonActor(BanditAgent):
     def __init__(self, num_actions, epsilon=0.1, decay_tau=0.001):
         super().__init__()
@@ -330,29 +415,6 @@ class EpsilonActor(BanditAgent):
             action = self.np_random.randint(0, self.num_actions, size=1)[0]
         else:
             action = np.argmax(values)
-
-        return action
-
-    def reset(self):
-        pass
-
-
-class SoftmaxActor(BanditAgent):
-    def __init__(self, num_actions, temp=1):
-        super().__init__()
-
-        self.temp = temp
-        self.inv_temp = 1 / self.temp
-        self.num_actions = num_actions
-        self.actions = list(range(self.num_actions))
-
-    def __call__(self, values):
-        return self.forward(values)
-
-    def forward(self, values):
-        values = np.asarray(values)
-        probs = softmax(values * self.inv_temp)
-        action = self.np_random.choice(self.actions, p=probs)
 
         return action
 
