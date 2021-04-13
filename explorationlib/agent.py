@@ -6,11 +6,14 @@ from collections import OrderedDict
 
 from scipy.special import softmax
 from scipy.stats import powerlaw
+from scipy.stats import entropy as scientropy
+
 from sklearn.neighbors import KDTree
 
 from explorationlib.memory import CountMemory
 from explorationlib.memory import EntropyMemory
 from explorationlib.memory import NoveltyMemory
+from explorationlib.memory import DiscreteDistributionGrid
 
 
 # -----------------------------------------------------------------------------
@@ -872,7 +875,7 @@ class AccumulatorGradientGrid(Agent2d):
     """Incremental search, using evidence accumulation to 
     estimate the gradient, which in turn effects turn probability. 
     
-    AKA information accumulating E. Coli.
+    AKA accumulating gradient E. Coli.
 
     Note: 
     ----
@@ -991,6 +994,186 @@ class AccumulatorGradientGrid(Agent2d):
         self.history["agent_delta"].append(deepcopy(obs - self.last_obs))
         self.history["agent_evidence"].append(deepcopy(self.evidence))
         self.history["agent_stop"].append(deepcopy(stop))
+        self.history["agent_grad"].append(deepcopy(grad))
+        self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        self.history["agent_angle"].append(deepcopy(self.angle))
+        self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        # print(action, self.evidence, self.threshold)
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Safe intial values
+        self.l = self._l(np.zeros(2))
+        self.angle = self._angle(np.zeros(2))
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.last_obs = 0.0
+        self.step = 0
+        self.evidence = 0.0
+        self.total_distance = 0.0
+        self.history = defaultdict(list)
+
+
+class AccumulatorInfoGrid(Agent2d):
+    """Incremental search, using evidence accumulation to 
+    estimate the information hits, which in turn effects 
+    turn probability. 
+    
+    AKA signal detection entropy in E. Coli.
+
+    Note: 
+    ----
+    Positive info biases turn prob 
+    """
+    def __init__(self,
+                 min_length=1,
+                 max_steps=100,
+                 drift_rate=1.0,
+                 accumulate_sigma=1.0,
+                 threshold=10.0,
+                 p_pos=0.8,
+                 p_neg=0.8,
+                 step_size=1):
+        super().__init__()
+        # Action init
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
+        self.min_length = int(min_length)
+        if self.min_length < 1:
+            raise ValueError("min_length must be >= 1")
+        self.max_steps = int(max_steps)
+
+        # Accum init
+        self.drift_rate = float(drift_rate)
+        self.accumulate_sigma = float(accumulate_sigma)
+        self.threshold = float(threshold)
+
+        self.p_pos = float(p_pos)
+        self.p_neg = float(p_neg)
+        self.last_obs = 0.0
+        self.evidence = 0.0
+
+        # Memory init
+        initial_bins = (0, 1)
+        self.grid = DiscreteDistributionGrid(initial_bins=initial_bins)
+        self.reset()
+
+    def _angle(self, state):
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        return self.step_size
+
+    def _w(self, n):
+        """Wiener process"""
+        # Init/reset
+        if n == 0: self.w = 0.0
+        # Draw
+        xi = self.np_random.normal(0.0, self.accumulate_sigma)
+        # Step process
+        self.w += (xi / np.sqrt(n + 1))
+        return self.w
+
+    def _accumulate_hit(self, obs, evidence):
+        """Weight the evidence for an observation"""
+        # If no info, treat as p_neg?
+        hit = 0
+        if np.isclose(obs, 0.0):
+            return obs, hit, True
+
+        # Consider things....
+        stop = False
+        delta = self.drift_rate * obs
+        for n in range(self.max_steps):
+            evidence = delta * self.drift_rate * self._w(n)
+            if evidence > self.threshold:
+                hit = 1
+                stop = True
+                break
+
+        return evidence, hit, stop
+
+    def forward(self, state):
+        """Step forward."""
+        # Parse
+        pos, obs = state
+
+        # Deliberate by accumulation
+        self.evidence, hit, stop = self._accumulate_hit(obs, self.evidence)
+
+        # Add to grid memory,
+        p_old = deepcopy(self.grid.probs(pos))
+        self.grid(pos, hit)
+        p_new = deepcopy(self.grid.probs(pos))
+
+        # Info gain (by KL), and its grad
+        info_gain = scientropy(p_old, qk=p_new, base=2)
+        try:
+            grad = info_gain - self.history["agent_info_gain"][-1]
+            # grad = self.history["agent_info_gain"][-1] - info_gain
+        except IndexError:
+            grad = info_gain
+            # grad = -info_gain
+
+        # Default is no-op
+        action = (0, 0)
+        self.l = 0.0
+        self.step = 0.0
+
+        # Move only when accum has stopped:
+        if stop:
+            # Reset
+            self.evidence = 0.0
+
+            # Grad weighted coin toss:
+            #
+            # Pick p controller
+            p = self.p_neg
+            if grad > 0:
+                p = self.p_pos
+
+            # Keep going?
+            if self.l > self.step:
+                self.step += self.step_size
+                self.num_step += 1
+
+            # Turn?
+            else:
+                if p > self.np_random.rand():
+                    self.num_turn += 1
+                    self.num_step = 0
+                    self.l = self._l(state)
+                    self.angle = self._angle(state)
+                    self.step = self.step_size
+
+            # Update the past
+            self.last_obs = deepcopy(obs)
+
+            #  Set new direction
+            action = self.angle
+
+        self.total_distance += self.step
+
+        # Log
+        self.history["agent_obs"].append(deepcopy(obs))
+        self.history["agent_delta"].append(deepcopy(obs - self.last_obs))
+        self.history["agent_evidence"].append(deepcopy(self.evidence))
+        self.history["agent_stop"].append(deepcopy(stop))
+        self.history["agent_info_gain"].append(deepcopy(info_gain))
+        self.history["agent_hit"].append(deepcopy(hit))
         self.history["agent_grad"].append(deepcopy(grad))
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
         self.history["agent_angle"].append(deepcopy(self.angle))

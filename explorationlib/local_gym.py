@@ -827,6 +827,21 @@ def create_grid_scent(shape, amplitude=1, sigma=10):
     return (x_coord, y_coord), gauss
 
 
+def create_grid_scent_patches(shape, p=0.1, amplitude=1, sigma=10):
+    """Make Guassian 'scent' grid, with random holes
+    for the MazeEnv"""
+    # Create scent
+    (x_coord, y_coord), gauss = create_grid_scent(shape,
+                                                  amplitude=amplitude,
+                                                  sigma=sigma)
+    # Random bool mask to make patches
+    # out of the scent
+    sample = np.random.rand(*gauss.shape)
+    gauss[sample > p] = 0.0
+
+    return (x_coord, y_coord), gauss
+
+
 def add_noise(scent, sigma=0.1, prng=None):
     """Add white noise, with variance sigma (clipped > 0)"""
 
