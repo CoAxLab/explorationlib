@@ -26,12 +26,295 @@ def R_update(state, R, critic, lr):
     return critic
 
 
+def Q_grid_update(state, action, R, next_state, critic, lr, gamma):
+    Q = critic.get_value(state, action)
+    max_Q = np.max(critic(next_state))
+    update = lr * ((R + gamma * max_Q) - Q)
+    critic.update(state, action, update)
+
+    return critic
+
+
 def E_update(state, E, critic, lr):
     """Bellman update"""
     update = lr * E
     critic.replace(state, update)
 
     return critic
+
+
+class Agent2d:
+    """API stub."""
+    def __init__(self):
+        self.seed()
+        self.total_distance = 0.0
+        self.history = defaultdict(list)
+
+    def seed(self, seed=None):
+        """Init RandomState"""
+        self.np_random = np.random.RandomState(seed)
+        return [seed]
+
+    def _angle(self, state):
+        """Sample angle"""
+        return self.np_random.uniform(0, 2 * np.pi)
+
+    def _l(self, state):
+        return NotImplementedError("Stub.")
+
+    def _convert(self, angle, l):
+        """Convert from (angle, l) to (x, y)"""
+        dx = l * np.cos(angle)
+        dy = l * np.sin(angle)
+        action = np.array([dx, dy])
+        return action
+
+    def forward(self, state):
+        """Step forward."""
+        return NotImplementedError("Stub.")
+
+    def __call__(self, state):
+        return self.forward(state)
+
+    def reset(self):
+        return NotImplementedError("Stub.")
+
+    def update(self, state, action, R, next_state, info):
+        return NotImplementedError("Stub.")
+
+
+class CriticGrid(Agent2d):
+    """Template for a Critic agent"""
+    def __init__(self, default_value=0.5):
+        super().__init__()
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        self.default_value = default_value
+        self.model = OrderedDict()
+
+    def __call__(self, state):
+        return self.forward(state)
+
+    def _init_model(self, state):
+        self.model[state] = OrderedDict()
+        for action in self.possible_actions:
+            self.model[state][action] = self.default_value
+
+    def forward(self, state):
+        if state not in self.model:
+            self._init_model(state)
+        return list(self.model[state].values())
+
+    def get_value(self, state, action):
+        Qs = self.forward(state)
+        idx = self.possible_actions.index(action)
+        Q = Qs[idx]
+        return Q
+
+    def update(self, state, action, update):
+        if state not in self.model:
+            self._init_model(state)
+        self.model[state][action] += update
+
+    def replace(self, state, action, update):
+        if state not in self.model:
+            self._init_model(state)
+        self.model[state][action] = update
+
+    def state_dict(self):
+        return self.model
+
+    def load_state_dict(self, state_dict):
+        self.model = state_dict
+
+    def reset(self):
+        self.model = OrderedDict()
+
+    def seed(self, seed=None):
+        """Init RandomState"""
+        self.np_random = np.random.RandomState(seed)
+        return [seed]
+
+
+class ActorCriticGrid:
+    """Actor-Critic agent, with Q learning."""
+    def __init__(self, actor, critic, lr=0.1, gamma=0.5):
+        self.seed()
+        self.history = defaultdict(list)
+        self.total_distance = 0
+
+        self.actor = actor
+        self.critic = critic
+        self.lr = float(lr)
+        self.gamma = float(gamma)
+
+    def __call__(self, state):
+        pos, _ = state
+        pos = tuple(pos)
+
+        return self.forward(pos)
+
+    def update(self, state, action, R, next_state, info):
+        # Parse
+        pos, _ = state
+        pos = tuple(pos)
+
+        next_pos, _ = next_state
+        next_pos = tuple(next_pos)
+
+        self.critic = Q_grid_update(
+            pos,
+            action,
+            R,
+            next_pos,
+            self.critic,
+            self.lr,
+            self.gamma,
+        )
+
+    def forward(self, state):
+        action = self.actor(self.critic(state))
+
+        # Log
+        self.total_distance += 1
+        self.history["agent_reward_value"].append(
+            deepcopy(self.critic.get_value(state, action)))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(1))
+        self.history["agent_num_step"].append(deepcopy(self.total_distance))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        # Don't reset RL algs between experiments
+        self.history = defaultdict(list)
+        self.total_distance = 0
+
+    def seed(self, seed=None):
+        """Init RandomState"""
+        self.np_random = np.random.RandomState(seed)
+        return [seed]
+
+
+class WSLSGrid:
+    """A Win-stay lose-switch agent"""
+    def __init__(self,
+                 actor_E,
+                 critic_E,
+                 actor_R,
+                 critic_R,
+                 initial_bins,
+                 lr=0.1,
+                 gamma=1,
+                 boredom=0.0):
+        super().__init__()
+        self.seed()
+        self.history = defaultdict(list)
+        self.total_distance = 0
+
+        # Agents init
+        self.actor_R = actor_R
+        self.critic_R = critic_R
+        self.actor_E = actor_E
+        self.critic_E = critic_E
+
+        # HP init
+        self.boredom = float(boredom)
+        self.lr = float(lr)
+        self.gamma = float(gamma)
+
+        # Memory init
+        self.initial_bins = initial_bins
+        self.bin_index = list(range(1, len(self.initial_bins) + 1))
+        self.grid = DiscreteDistributionGrid(self.bin_index)
+
+        # Values init
+        self.E = self.critic_E.default_value
+        self.R = self.critic_R.default_value
+
+    def __call__(self, state):
+        pos, _ = state
+        pos = tuple(pos)
+
+        return self.forward(pos)
+
+    def update(self, state, action, R, next_state, info):
+        # Parse
+        pos, _ = state
+        pos = tuple(pos)
+
+        next_pos, obs = next_state
+        next_pos = tuple(next_pos)
+
+        # Simplify the obs
+        obs = np.digitize(obs, self.initial_bins)
+
+        # Add to grid memory
+        p_old = deepcopy(self.grid.probs(pos))
+        self.grid(pos, obs)
+        p_new = deepcopy(self.grid.probs(pos))
+
+        # Info gain, by KL
+        E = scientropy(p_old, qk=p_new, base=2)
+
+        # Update instant Values
+        self.E = E
+        self.R = R
+
+        # Update total Value
+        self.critic_R = Q_grid_update(
+            pos,
+            action,
+            R,
+            next_pos,
+            self.critic_R,
+            self.lr,
+            self.gamma,
+        )
+        self.critic_E = Q_grid_update(
+            pos,
+            action,
+            E,
+            next_pos,
+            self.critic_E,
+            1.0,
+            1.0,
+        )
+
+    def forward(self, state):
+        # Meta-choice
+        if (self.E - self.boredom) > self.R:
+            critic = self.critic_E
+            actor = self.actor_E
+        else:
+            critic = self.critic_R
+            actor = self.actor_R
+
+        # Choose action
+        action = actor(critic(state))
+
+        # Log
+        self.total_distance += 1
+        self.history["agent_reward_value"].append(
+            deepcopy(self.critic_R.get_value(state, action)))
+        self.history["agent_info_value"].append(
+            deepcopy(self.critic_E.get_value(state, action)))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(1))
+        self.history["agent_num_step"].append(deepcopy(self.total_distance))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        # Don't reset RL algs between experiments
+        self.history = defaultdict(list)
+        self.total_distance = 0
+
+    def seed(self, seed=None):
+        """Init RandomState"""
+        self.np_random = np.random.RandomState(seed)
+        return [seed]
 
 
 class BanditAgent:
@@ -60,8 +343,8 @@ class BanditActorCritic(BanditAgent):
     def __call__(self, state):
         return self.forward(state)
 
-    def update(self, state, action, reward, info):
-        self.critic_R = R_update(action, reward, self.critic, self.lr_reward)
+    def update(self, state, action, R, next_state, info):
+        self.critic_R = R_update(action, R, self.critic, self.lr_reward)
 
     def forward(self, state):
         action = self.actor(list(self.critic.model.values()))
@@ -70,61 +353,6 @@ class BanditActorCritic(BanditAgent):
     def reset(self):
         self.actor.reset()
         self.critic.reset()
-
-
-class BanditWSLS(BanditAgent):
-    """A Win-stay lose-switch agent"""
-    def __init__(self, actor_E, critic_E, actor_R, critic_R, boredom=0.0):
-        super().__init__()
-
-        self.actor_R = actor_R
-        self.critic_R = critic_R
-        self.actor_E = actor_E
-        self.critic_E = critic_E
-        self.boredom = boredom
-
-    def __call__(self, E, R):
-        return self.forward(E, R)
-
-    def update(self, action, E, R, lr_R):
-        self.critic_R = R_update(action, R, self.critic_R, lr_R)
-        self.critic_E = E_update(action, E, self.critic_E, lr=1)
-
-    def forward(self, E, R):
-        if (E - self.boredom) > R:
-            critic = self.critic_E
-            actor = self.actor_E
-            policy = 0
-        else:
-            critic = self.critic_R
-            actor = self.actor_R
-            policy = 1
-
-        return actor, critic, policy
-
-    def reset(self):
-        self.actor_R.reset()
-        self.critic_R.reset()
-        self.actor_E.reset()
-        self.critic_E.reset()
-
-
-class BanditWSLSh(BanditWSLS):
-    """Win-stay lose-switch policy control, for homeostatic rewards"""
-    def __init__(self, actor_E, critic_E, actor_R, critic_R, boredom=0.0):
-        super().__init__(actor_E, critic_E, actor_R, critic_R, boredom=boredom)
-
-    def forward(self, E, R):
-        if (E - self.boredom) >= R:
-            critic = self.critic_E
-            actor = self.actor_E
-            policy = 0
-        else:
-            critic = self.critic_R
-            actor = self.actor_R
-            policy = 1
-
-        return actor, critic, policy
 
 
 class Critic(BanditAgent):
@@ -372,12 +600,17 @@ class DeterministicActor(BanditAgent):
 
 class SoftmaxActor(BanditAgent):
     """Softmax actions"""
-    def __init__(self, num_actions, beta=1.0):
+    def __init__(self, num_actions, actions=None, beta=1.0):
         super().__init__()
 
         self.beta = float(beta)
         self.num_actions = num_actions
-        self.actions = list(range(self.num_actions))
+        if actions is None:
+            self.actions = list(range(self.num_actions))
+            self.action_idx = deepcopy(self.actions)
+        else:
+            self.actions = actions
+            self.action_idx = list(range(self.num_actions))
 
     def __call__(self, values):
         return self.forward(values)
@@ -385,9 +618,8 @@ class SoftmaxActor(BanditAgent):
     def forward(self, values):
         values = np.asarray(values)
         probs = softmax(values * self.beta)
-        action = self.np_random.choice(self.actions, p=probs)
-
-        return action
+        idx = self.np_random.choice(self.action_idx, p=probs)
+        return self.actions[idx]
 
     def reset(self):
         pass
@@ -427,48 +659,6 @@ class EpsilonActor(BanditAgent):
 
 # -----------------------------------------------------------------------------
 # Field - random, grad, simple memory
-
-
-class Agent2d:
-    """API stub."""
-    def __init__(self):
-        self.seed()
-        self.total_distance = 0.0
-        self.history = defaultdict(list)
-
-    def seed(self, seed=None):
-        """Init RandomState"""
-        self.np_random = np.random.RandomState(seed)
-        return [seed]
-
-    def _angle(self, state):
-        """Sample angle"""
-        return self.np_random.uniform(0, 2 * np.pi)
-
-    def _l(self, state):
-        return NotImplementedError("Stub.")
-
-    def _convert(self, angle, l):
-        """Convert from (angle, l) to (x, y)"""
-        dx = l * np.cos(angle)
-        dy = l * np.sin(angle)
-        action = np.array([dx, dy])
-        return action
-
-    def forward(self, state):
-        """Step forward."""
-        return NotImplementedError("Stub.")
-
-    def __call__(self, state):
-        return self.forward(state)
-
-    def reset(self):
-        return NotImplementedError("Stub.")
-
-    def update(self, *args):
-        return NotImplementedError("Stub.")
-
-
 class UniformDiscrete(Agent2d):
     def __init__(self, num_actions=4, min_length=1, max_length=4):
         super().__init__()
@@ -754,7 +944,7 @@ class AccumulatorGradientDiscrete(Agent2d):
     def __init__(self,
                  num_actions=4,
                  min_length=1,
-                 max_steps=100,
+                 max_steps=1,
                  drift_rate=1.0,
                  accumulate_sigma=1.0,
                  threshold=10.0,
@@ -883,7 +1073,7 @@ class AccumulatorGradientGrid(Agent2d):
     """
     def __init__(self,
                  min_length=1,
-                 max_steps=100,
+                 max_steps=1,
                  drift_rate=1.0,
                  accumulate_sigma=1.0,
                  threshold=10.0,
@@ -1482,6 +1672,10 @@ class GradientDiffusionGrid(Agent2d):
         self.step = 0
         self.total_distance = 0.0
         self.history = defaultdict(list)
+
+
+class QlearnGrid(Agent2d):
+    pass
 
 
 class Uniform2d(Agent2d):

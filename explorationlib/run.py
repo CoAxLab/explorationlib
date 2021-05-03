@@ -70,10 +70,13 @@ def experiment(name,
             # Step
             action = agent(state)
             env.step(action)
-            state, reward, done, info = env.last()
+            next_state, reward, done, info = env.last()
 
             # Learn? Might do nothing.
-            agent.update(state, action, reward, info)
+            agent.update(state, action, reward, next_state, info)
+
+            # Shift
+            state = deepcopy(next_state)
 
             # Log step env
             log["exp_step"].append(deepcopy(n))
