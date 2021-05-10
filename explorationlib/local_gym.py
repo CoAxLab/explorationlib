@@ -232,6 +232,14 @@ class BanditChange4:
 # -------------------------------------------------------------------------
 # Fields
 class ScentMazeEnv(MazeEnv):
+    """
+    A maze, where maze exist has a reward that emits a scent
+
+    Based on gym_maze's MazeEnv
+    https://github.com/MattChanTK/gym-maze
+
+    See above for info in init params
+    """
     def __init__(self,
                  maze_file=None,
                  maze_size=None,
@@ -375,45 +383,6 @@ class Field(gym.Env):
 
     def render(self, mode='human', close=False):
         pass
-
-
-class ViswanathanField5000(Field):
-    def __init__(self):
-        super().__init__()
-        targets, values = self._create_targets(5000)
-        super().add_targets(targets, values, detection_radius=1)
-
-    def _create_targets(self, num_targets):
-        target_boundary = (100, 100)
-        targets = uniform_targets(num_targets, target_boundary)
-        values = constant_values(targets, 1)
-        return targets, values
-
-
-class ViswanathanField50000(Field):
-    def __init__(self):
-        super().__init__()
-        targets, values = self._create_targets(50000)
-        super().add_targets(targets, values, detection_radius=1)
-
-    def _create_targets(self, num_targets):
-        target_boundary = (100, 100)
-        targets = uniform_targets(num_targets, target_boundary)
-        values = constant_values(targets, 1)
-        return targets, values
-
-
-class ViswanathanField500000(Field):
-    def __init__(self):
-        super().__init__()
-        targets, values = self._create_targets(500000)
-        super().add_targets(targets, values, detection_radius=1)
-
-    def _create_targets(self, num_targets):
-        target_boundary = (100, 100)
-        targets = uniform_targets(num_targets, target_boundary)
-        values = constant_values(targets, 1)
-        return targets, values
 
 
 class CompetitiveField(gym.Env):
