@@ -21,8 +21,11 @@ warnings.filterwarnings("ignore")
 # Enviroments
 
 
-# -------------------------------------------------------------------------
-# Bandits
+# ---------------------------------------------------------------------------
+# Basic Bandits
+# - A base class,
+# - then several working examples
+# ---------------------------------------------------------------------------
 class BanditEnv(gym.Env):
     """
     n-armed bandit environment  
@@ -230,7 +233,9 @@ class BanditChange4:
 
 
 # -------------------------------------------------------------------------
-# Fields
+# Maze
+# - A modified version of MazeEnv
+# -------------------------------------------------------------------------
 class ScentMazeEnv(MazeEnv):
     """
     A maze, where maze exist has a reward that emits a scent
@@ -281,6 +286,12 @@ class ScentMazeEnv(MazeEnv):
         return (self.state, self.reward, self.done, self.info)
 
 
+# ---------------------------------------------------------------------------
+# Basic 2D environments
+# - Three bases classes
+# - Then a Scent having class
+# - Then multi-player classes
+# ---------------------------------------------------------------------------
 class Field(gym.Env):
     """An open-field to explore, with no boundries."""
     def __init__(self):
@@ -297,13 +308,13 @@ class Field(gym.Env):
         self.reset()
 
     def step(self, action):
+        """Agent takes a step, then checks targets/friends."""
         self.state += action
         self.check_targets()
         return self.last()
 
     def last(self):
-        """Return the last transition: (state, reward, done, info)
-        """
+        """Transition - (state, reward, done, info)"""
         return (self.state, self.reward, self.done, self.info)
 
     def add_targets(self,
@@ -312,7 +323,7 @@ class Field(gym.Env):
                     detection_radius=1,
                     kd_kwargs=None,
                     p_target=1.0):
-        """Add targets and their values"""
+        """Add targets, and their values"""
 
         # Sanity
         if len(targets) != len(values):
@@ -320,26 +331,21 @@ class Field(gym.Env):
 
         # Will it be there?
         self.p_target = p_target
+        self.detection_radius = detection_radius
 
         # Store raw targets simply (list)
         self.num_targets = len(targets)
         self.targets = targets
         self.values = values
-        self.detection_radius = detection_radius
 
-        # Also store targets so lookup is efficient (tree)
+        # Init Target tree (for fast lookup)
         if kd_kwargs is None:
             kd_kwargs = {}
 
         self._kd = KDTree(np.vstack(self.targets), **kd_kwargs)
 
     def check_targets(self):
-        """Check for targets, and update self.reward if
-        some are found in the given detection_radius.
-
-        Note: the deault d_func is the euclidian distance. 
-        To override provide a func(x, y) -> distance.
-        """
+        """Check for targets, and update self.reward"""
         # Short circuit if no targets
         if self.targets is None:
             return None
@@ -385,140 +391,61 @@ class Field(gym.Env):
         pass
 
 
-class CompetitiveField(gym.Env):
-    def __init__(self, num_agents=2):
-        self.num_agents = num_agents
-        self.info = {}
-        self.reward = 0.0
-        self.done = False
+class Bounded(Field):
+    """An open-field to explore, with boundries.
+    
+    Parameters
+    ----------
+    boundary : 2-tuple (x, y)
+        The absolute value of the 2d boundary.
+    mode: str
+        How to handle collisions with the boundary. 
+        - stopping: stop movement
+        - absorbing: stop movement and end the run
+        - periodic: loop back around, aka pacman mode
+                    (not yet implemented).
+        """
+    def __init__(self, boundary, mode="stopping"):
+        # Init the field
+        super().__init__()
 
-        self.detection_radius = None
-        self.targets = None
-        self.initial_targets = None
-        self.values = None
-        self.seed()
-        self.reset()
+        # New attrs
+        self.boundary = boundary
+        self.mode = mode
 
-    def step(self, action, n):
-        # Step
-        self.n = n
-        self.state[n] += action
-        # Update/check targets
-        self.update_targets(n)
-        self.reward = 0.0
-        self.check_targets(n)
+        # Sanity testing
+        for s in boundary:
+            if s < 0:
+                raise ValueError("boundary must be positive")
+            elif not np.isfinite(s):
+                raise ValueError("boundary must be finite")
 
-        # -
+        valid = ("stopping", "absorbing", "periodic")
+        if self.mode not in valid:
+            raise ValueError(f"mode must be {valid}")
+
+    def step(self, action):
+        # step
+        super().step(action)
+
+        # check bounds. clipping and stopping
+        # in a mode dependent way
+        for i, s in enumerate(self.state):
+            if np.abs(s) > self.boundary[i]:
+                if self.mode == "stopping":
+                    self.state[i] = np.sign(s) * self.boundary[i]
+                elif self.mode == "absorbing":
+                    self.state[i] = np.sign(s) * self.boundary[i]
+                    self.done = True
+                elif self.mode == "periodic":
+                    raise NotImplementedError("[TODO]")
+                else:
+                    raise ValueError("Invalid mode")
+        # ...
+        super().check_targets()
         return self.last()
 
-    def last(self):
-        """Return last: (state, reward, done, info)"""
-        return (self.state, self.reward, self.done, self.info)
 
-    def add_targets(self,
-                    index,
-                    targets,
-                    values,
-                    detection_radius=1,
-                    p_target=1.0):
-        """Add targets and their values"""
-        self.target_index = index
-
-        # Sanity
-        if len(index) != len(targets):
-            raise ValueError("index and targets must match.")
-        if len(targets) != len(values):
-            raise ValueError("targets and values must match.")
-
-        # Will it be there?
-        self.p_target = p_target
-
-        # Store raw targets simply (list)
-        self.num_targets = len(targets)
-        self.initial_targets = targets
-        self.targets = deepcopy(self.initial_targets)
-        self.values = values
-        self.detection_radius = detection_radius
-
-        # Step targets
-        for i, t in zip(self.target_index, self.targets):
-            self.step(t, i)
-
-        # Init tree
-        self._kd = KDTree(np.vstack(self.targets))
-
-    def check_targets(self, n):
-        """Check for targets, and update self.reward if
-        some are found in the given detection_radius.
-
-        Note: the deault d_func is the euclidian distance. 
-        To override provide a func(x, y) -> distance.
-        """
-        if n not in self.target_index:
-            # Short circuit if no targets
-            if self.targets is None:
-                return None
-
-            # Reinit reward. Assume we are not at a target
-            self.reward = 0.0
-
-            # How far are we and is it close enough to
-            # generate a reward? AKA are we at a target?
-            state = np.atleast_2d(np.asarray(self.state[n]))
-            dist, ind = self._kd.query(state, k=1)
-
-            # Care about the closest; Fmt
-            dist = float(dist[0])
-            ind = int(ind[0])
-            code = self.target_index[ind]
-
-            # Test proximity
-            if code not in self.dead:
-                if dist <= self.detection_radius:
-                    # Detection is death
-                    self.dead.append(code)
-
-                    # What's the value?
-                    value = self.values[ind]
-
-                    # Coin flip
-                    if self.np_random.rand() <= self.p_target:
-                        self.reward = value
-                    else:
-                        self.reward = 0.0
-
-    def update_targets(self, n):
-        if n in self.target_index:
-            i = self.target_index.index(n)
-            self.targets[i] = self.state[n]
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    def reset(self):
-        self.n = 0
-        # Reinit
-        self.state = [np.zeros(2) for _ in range(self.num_agents)]
-
-        # Restep targets
-        if self.initial_targets is not None:
-            self.targets = deepcopy(self.initial_targets)
-            for i, t in zip(self.target_index, self.targets):
-                self.step(t, i)
-
-        # Revive the dead!
-        self.dead = []
-
-        # Reset
-        self.reward = 0.0
-        self.last()
-
-    def render(self, mode='human', close=False):
-        pass
-
-
-# ---------------------------------------------------------------------------
 class Grid(Field):
     """A discrete open-ended grid-world."""
     def __init__(self, mode="discrete"):
@@ -552,38 +479,7 @@ class Grid(Field):
         self.last()
 
 
-class CompetitiveGrid(CompetitiveField):
-    """A discrete open-ended grid-world."""
-    def __init__(self, num_agents=2, mode="discrete"):
-        super().__init__(num_agents=num_agents)
-        self.mode = mode
-
-    def _card_step(self, action, n):
-        # Interpret action as a cardinal direction
-        action = int(action)
-        if action == 0:
-            super().step((0, 1), n)
-        elif action == 1:
-            super().step((0, -1), n)
-        elif action == 2:
-            super().step((1, 0), n)
-        elif action == 3:
-            super().step((-1, 0), n)
-
-    def step(self, action, n):
-        if self.mode == "discrete":
-            self._card_step(action, n)
-        else:
-            action = [int(a) for a in action]
-            super().step(action, n)
-
-        return self.last()
-
-    def reset(self):
-        super().reset()
-        super().last()
-
-
+# ---
 class ScentGrid(Grid):
     """Am open-grid, with scent"""
     def __init__(self, mode="discrete"):
@@ -692,63 +588,357 @@ class ScentGrid(Grid):
         self.last()
 
 
-class Bounded(Field):
-    """An open-field to explore, with boundries.
-    
-    Parameters
-    ----------
-    boundary : 2-tuple (x, y)
-        The absolute value of the 2d boundary.
-    mode: str
-        How to handle collisions with the boundary. 
-        - stopping: stop movement
-        - absorbing: stop movement and end the run
-        - periodic: loop back around, aka pacman mode
-                    (not yet implemented).
+# ---
+# Multi
+class CompetitiveField(gym.Env):
+    """Am open-ended field, with prey."""
+    def __init__(self, num_agents=2):
+        self.num_agents = num_agents
+        self.info = {}
+        self.reward = 0.0
+        self.done = False
+        self.dead = None
+
+        self.detection_radius = None
+        self.targets = None
+        self.initial_targets = None
+        self.values = None
+        self.seed()
+        self.reset()
+
+    def step(self, action, n):
+        # Step
+        self.n = n
+        self.state[n] += action
+        # Update/check targets
+        self.update_targets(n)
+        self.reward = 0.0
+        self.check_targets(n)
+
+        # -
+        return self.last()
+
+    def last(self):
+        """Return last: (state, reward, done, info)"""
+        return (self.state, self.reward, self.done, self.info)
+
+    def add_targets(self,
+                    index,
+                    targets,
+                    values,
+                    detection_radius=1,
+                    p_target=1.0):
+        """Add targets and their values"""
+        self.target_index = index
+
+        # Sanity
+        if len(index) != len(targets):
+            raise ValueError("index and targets must match.")
+        if len(targets) != len(values):
+            raise ValueError("targets and values must match.")
+
+        # Will it be there?
+        self.p_target = p_target
+
+        # Store raw targets simply (list)
+        self.num_targets = len(targets)
+        self.initial_targets = targets
+        self.targets = deepcopy(self.initial_targets)
+        self.values = values
+        self.detection_radius = detection_radius
+
+        # Step targets
+        for i, t in zip(self.target_index, self.targets):
+            self.step(t, i)
+
+        # Init tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def check_targets(self, n):
+        """Check for targets, and update self.reward if
+        some are found in the given detection_radius.
+
+        Note: the deault d_func is the euclidian distance. 
+        To override provide a func(x, y) -> distance.
         """
-    def __init__(self, boundary, mode="stopping"):
-        # Init the field
-        super().__init__()
+        if n not in self.target_index:
+            # Short circuit if no targets
+            if self.targets is None:
+                return None
 
-        # New attrs
-        self.boundary = boundary
-        self.mode = mode
+            # Reinit reward. Assume we are not at a target
+            self.reward = 0.0
 
-        # Sanity testing
-        for s in boundary:
-            if s < 0:
-                raise ValueError("boundary must be positive")
-            elif not np.isfinite(s):
-                raise ValueError("boundary must be finite")
+            # How far are we and is it close enough to
+            # generate a reward? AKA are we at a target?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd.query(state, k=1)
 
-        valid = ("stopping", "absorbing", "periodic")
-        if self.mode not in valid:
-            raise ValueError(f"mode must be {valid}")
+            # Care about the closest; Fmt
+            dist = float(dist[0])
+            ind = int(ind[0])
+            code = self.target_index[ind]
 
-    def step(self, action):
-        # step
-        super().step(action)
+            # Test proximity
+            if code not in self.dead:
+                if dist <= self.detection_radius:
 
-        # check bounds. clipping and stopping
-        # in a mode dependent way
-        for i, s in enumerate(self.state):
-            if np.abs(s) > self.boundary[i]:
-                if self.mode == "stopping":
-                    self.state[i] = np.sign(s) * self.boundary[i]
-                elif self.mode == "absorbing":
-                    self.state[i] = np.sign(s) * self.boundary[i]
-                    self.done = True
-                elif self.mode == "periodic":
-                    raise NotImplementedError("[TODO]")
-                else:
-                    raise ValueError("Invalid mode")
-        # ...
-        super().check_targets()
+                    # What's the value?
+                    value = self.values[ind]
+
+                    # Coin flip
+                    if self.np_random.rand() <= self.p_target:
+                        self.reward = value
+                        self.dead.append(code)  # death if detection
+                    else:
+                        self.reward = 0.0
+
+    def update_targets(self, n):
+        # Update targets
+        if n in self.target_index:
+            i = self.target_index.index(n)
+            self.targets[i] = self.state[n]
+
+        # Rebuild tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def reset(self):
+        self.n = 0
+        # Reinit
+        self.state = [np.zeros(2) for _ in range(self.num_agents)]
+
+        # Restep targets
+        if self.initial_targets is not None:
+            self.targets = deepcopy(self.initial_targets)
+            for i, t in zip(self.target_index, self.targets):
+                self.step(t, i)
+
+        # Revive the dead!
+        self.dead = []
+
+        # Reset
+        self.reward = 0.0
+        self.last()
+
+    def render(self, mode='human', close=False):
+        pass
+
+
+class CompetitiveGrid(CompetitiveField):
+    """Am open-ended grid-world, with prey."""
+    def __init__(self, num_agents=2):
+        super().__init__(num_agents=num_agents)
+
+    def step(self, action, n):
+        # Force int... so we are on a grid.
+        action = [int(a) for a in action]
+        super().step(action, n)
+
+        return self.last()
+
+
+class CooperativeField(gym.Env):
+    """Am open-ended field, with prey, who form teams."""
+    def __init__(self, num_agents=2):
+        self.num_agents = num_agents
+        self.info = {}
+        self.reward = 0.0
+        self.done = False
+
+        self.detection_radius = None
+        self.friend_radius = None
+        self.targets = None
+        self.initial_targets = None
+        self.values = None
+        self.seed()
+        self.reset()
+
+    def step(self, action, n):
+        """Agent 'n' takes a step, then checks targets/friends."""
+        # Step
+        self.n = n
+        self.state[n] += action
+
+        # Update/check targets,
+        # then check friends
+        self.update_targets(n)
+        self.reward = 0.0
+        self.check_friends(n)
+        self.check_targets(n)
+
+        # Return last env transition
+        return self.last()
+
+    def last(self):
+        """Transition - (state, reward, done, info)"""
+        return (self.state, self.reward, self.done, self.info)
+
+    def add_targets(self,
+                    index,
+                    targets,
+                    values,
+                    detection_radius=1,
+                    friend_radius=1,
+                    p_target=1.0,
+                    p_friend=1.0):
+        """Add targets, and their values"""
+        # An index to seperate prey (targets)
+        # from predators, when all are agents.
+        self.target_index = index
+
+        # Sanity check
+        if len(index) != len(targets):
+            raise ValueError("index and targets must match.")
+        if len(targets) != len(values):
+            raise ValueError("targets and values must match.")
+
+        # Will it be there?
+        self.p_target = p_target
+        self.p_friend = p_friend
+        self.detection_radius = detection_radius
+        self.friend_radius = friend_radius
+
+        # Store raw targets simply (list)
+        self.num_targets = len(targets)
+        self.initial_targets = targets
+        self.targets = deepcopy(self.initial_targets)
+        self.values = values
+
+        # Step targets to initial positions
+        for i, t in zip(self.target_index, self.targets):
+            self.step(t, i)
+
+        # Init Target tree (for fast lookup)
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def update_targets(self, n):
+        """Move target to new location"""
+        # Update target location
+        if n in self.target_index:
+            i = self.target_index.index(n)
+            self.targets[i] = self.state[n]
+
+        # Rebuild tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def check_targets(self, n):
+        """Check for targets, and update self.reward"""
+        # No targets
+        if self.targets is None:
+            return None
+
+        # Is 'n' a predator?
+        if n not in self.target_index:
+            # How far are targets?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd.query(state, k=1)
+
+            # Pick the closest
+            dist = float(dist[0])
+            ind = int(ind[0])
+            code = self.target_index[ind]
+
+            # Are they in the radius?
+            if code not in self.dead:
+                if dist <= self.detection_radius:
+                    # Detection coin flip:
+                    if self.np_random.rand() <= self.p_target:
+
+                        # What's the value?
+                        value = self.values[ind]
+                        self.reward = value
+
+                        # Death to prey, if detection
+                        self.dead.append(code)
+                    else:
+                        self.reward = 0.0
+
+    def check_friends(self, n):
+        """Check for friends, team up?, and update self.reward"""
+
+        # No targets
+        if self.targets is None:
+            return None
+
+        # Is 'n' a prey?
+        if n in self.target_index:
+            # How far are friends?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd.query(state, k=2)
+
+            # Pick the closest (not itself, aka 0)
+            dist = float(dist[0][1])
+            ind = int(ind[0][1])
+            code = self.target_index[ind]
+
+            # Are they in the radius?
+            if code not in self.dead:
+                if (0.0 < dist <= self.friend_radius):
+                    # Detection coin flip:
+                    if self.np_random.rand() <= self.p_friend:
+
+                        # What's the value?
+                        value = self.values[ind]
+                        self.reward = value
+
+                        # To form a team:
+                        #
+                        # 1. Merge value at n; zero at ind
+                        # 2. Then kill at ind/code
+                        self.values[n] += value
+                        self.values[ind] = 0.0
+
+                        self.team.append((n, ind))
+                        self.dead.append(code)  # death if detection
+                    else:
+                        self.reward = 0.0
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def reset(self):
+        self.n = 0
+        # Reinit
+        self.state = [np.zeros(2) for _ in range(self.num_agents)]
+
+        # Restep targets
+        if self.initial_targets is not None:
+            self.targets = deepcopy(self.initial_targets)
+            for i, t in zip(self.target_index, self.targets):
+                self.step(t, i)
+
+        # Revive the dead!
+        self.dead = []
+        self.team = []
+
+        # Reset
+        self.reward = 0.0
+        self.last()
+
+    def render(self, mode='human', close=False):
+        pass
+
+
+class CooperativeGrid(CooperativeField):
+    """Am open-ended grid-world, with prey, who form teams."""
+    def __init__(self, num_agents=2):
+        super().__init__(num_agents=num_agents)
+
+    def step(self, action, n):
+        # Force int... so we are on a grid.
+        action = [int(a) for a in action]
+        super().step(action, n)
+
         return self.last()
 
 
 # -------------------------------------------------------------------------
-# Scents
+# Scent functions
 # -------------------------------------------------------------------------
 
 
@@ -822,7 +1012,7 @@ def add_noise(scent, sigma=0.1, prng=None):
 
 
 # -------------------------------------------------------------------------
-# Targets
+# Targets functions
 # -------------------------------------------------------------------------
 
 
