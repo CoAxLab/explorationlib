@@ -842,14 +842,14 @@ class CooperativeField(gym.Env):
             ind = int(ind[0])
             code = self.target_index[ind]
 
+            # What's the value?
+            value = self.values[ind]
+
             # Are they in the radius?
             if code not in self.dead:
-                if dist <= self.detection_radius:
+                if dist <= (self.detection_radius * value):
                     # Detection coin flip:
                     if self.np_random.rand() <= self.p_target:
-
-                        # What's the value?
-                        value = self.values[ind]
                         self.reward = value
 
                         # Death to prey, if detection
@@ -892,7 +892,7 @@ class CooperativeField(gym.Env):
                         self.values[n] += value
                         self.values[ind] = 0.0
 
-                        self.team.append((n, ind))
+                        self.friends.append((n, ind))
                         self.dead.append(code)  # death if detection
                     else:
                         self.reward = 0.0
@@ -902,8 +902,8 @@ class CooperativeField(gym.Env):
         return [seed]
 
     def reset(self):
-        self.n = 0
         # Reinit
+        self.n = 0
         self.state = [np.zeros(2) for _ in range(self.num_agents)]
 
         # Restep targets
@@ -914,7 +914,7 @@ class CooperativeField(gym.Env):
 
         # Revive the dead!
         self.dead = []
-        self.team = []
+        self.friends = []
 
         # Reset
         self.reward = 0.0
