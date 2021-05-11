@@ -628,7 +628,21 @@ class CompetitiveField(gym.Env):
                     values,
                     detection_radius=1,
                     p_target=1.0):
-        """Add targets and their values"""
+        """Add targets, and their values.
+        
+        Params
+        ------
+        index : list
+            The index of agents who act as targets (aka prey)
+        targets : list
+            Intial target (prey) locations
+        values : list
+            Intial target (prey) values
+        detection_radius : int (> 1)
+            How far the predator can 'see'
+        p_target : float (0-1)
+            Prob. predator find targets (in the detection_radius)
+        """
         self.target_index = index
 
         # Sanity
@@ -742,7 +756,24 @@ class CompetitiveGrid(CompetitiveField):
 
 
 class CooperativeField(gym.Env):
-    """Am open-ended field, with prey, who form teams."""
+    """Am open-ended field, with prey, who form teams.
+    
+    Params
+    -----
+    num_agents: int
+        The total number of agents
+
+    Notes
+    -----
+    Teams move as one 'agent', with a value equal
+    to the total individual values. 
+    
+    However!
+
+    Predator `detection_radius` is scaled by the 
+    value of each agent or team. That is, 
+    `detection_radius * value`.
+    """
     def __init__(self, num_agents=2):
         self.num_agents = num_agents
         self.info = {}
@@ -785,7 +816,25 @@ class CooperativeField(gym.Env):
                     friend_radius=1,
                     p_target=1.0,
                     p_friend=1.0):
-        """Add targets, and their values"""
+        """Add targets, and their values.
+        
+        Params
+        ------
+        index : list
+            The index of agents who act as targets (aka prey)
+        targets : list
+            Intial target (prey) locations
+        values : list
+            Intial target (prey) values
+        detection_radius : int (> 1)
+            How far the predator can 'see'
+        friend_radius : int (> 1)
+            How far the targets (prey) can 'see'
+        p_target : float (0-1)
+            Prob. predator find targets (in the detection_radius)
+        p_friend : float (0-1)
+            Prob. prey become friends (in the friend_radius)
+        """
         # An index to seperate prey (targets)
         # from predators, when all are agents.
         self.target_index = index
