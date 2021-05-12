@@ -899,9 +899,11 @@ class CooperativeField(gym.Env):
                 if dist <= (self.detection_radius * value):
                     # Detection coin flip:
                     if self.np_random.rand() <= self.p_target:
+                        # Pret value is
                         self.reward = value
 
                         # Death to prey, if detection
+                        self.values[ind] = 0.0 
                         self.dead.append(code)
                     else:
                         self.reward = 0.0
@@ -932,7 +934,7 @@ class CooperativeField(gym.Env):
 
                         # What's the value?
                         value = self.values[ind]
-                        self.reward = value
+                        # self.reward = value
 
                         # To form a team:
                         #
