@@ -785,6 +785,7 @@ class CooperativeField(gym.Env):
         self.targets = None
         self.initial_targets = None
         self.values = None
+        self.initial_values = None
         self.seed()
         self.reset()
 
@@ -853,9 +854,12 @@ class CooperativeField(gym.Env):
 
         # Store raw targets simply (list)
         self.num_targets = len(targets)
-        self.initial_targets = targets
+
+        self.initial_targets = deepcopy(targets)
+        self.initial_values = deepcopy(values)
+
         self.targets = deepcopy(self.initial_targets)
-        self.values = values
+        self.values = deepcopy(self.initial_values)
 
         # Step targets to initial positions
         for i, t in zip(self.target_index, self.targets):
@@ -903,7 +907,7 @@ class CooperativeField(gym.Env):
                         self.reward = value
 
                         # Death to prey, if detection
-                        self.values[ind] = 0.0 
+                        self.values[ind] = 0.0
                         self.dead.append(code)
                     else:
                         self.reward = 0.0
@@ -957,11 +961,14 @@ class CooperativeField(gym.Env):
         self.n = 0
         self.state = [np.zeros(2) for _ in range(self.num_agents)]
 
-        # Restep targets
+        # Restep targets and values
         if self.initial_targets is not None:
             self.targets = deepcopy(self.initial_targets)
             for i, t in zip(self.target_index, self.targets):
                 self.step(t, i)
+
+        if self.initial_values is not None:
+            self.values = deepcopy(self.initial_values)
 
         # Revive the dead!
         self.dead = []
