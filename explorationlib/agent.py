@@ -993,7 +993,6 @@ class AccumulatorGradientDiscrete(Agent2d):
         for n in range(self.max_steps):
             evidence += self.drift_rate * self._w(n)
             if np.abs(evidence) > self.threshold:
-                print("!")
                 break
 
         return evidence, np.sign(evidence)
