@@ -995,6 +995,298 @@ class CooperativeGrid(CooperativeField):
         return self.last()
 
 
+class CutthroatField(gym.Env):
+    """An open-ended field, with predators who attack everyone!.
+    
+    Params
+    -----
+    num_agents: int
+        The total number of agents
+    """
+    def __init__(self, num_agents=2):
+        self.num_agents = num_agents
+        self.info = {}
+        self.reward = 0.0
+        self.done = False
+
+        # Prey
+        self.detection_radius = None
+        self.targets = None
+        self.initial_targets = None
+        self.values = None
+        self.initial_values = None
+
+        # Pred
+        self.enemy_radius = None
+        self.initial_enemy = None
+        self.enemy = None
+        self.enemy_index = None
+        self.enemy_values = None
+
+        # Init
+        self.seed()
+        self.reset()
+
+    def step(self, action, n):
+        """Agent 'n' takes a step, then checks targets/enemys."""
+        # Step
+        self.n = n
+        self.state[n] += action
+
+        # Update/check targets,
+        # then check enemys
+        self.reward = 0.0
+
+        if self.targets is not None:
+            self.update_targets(n)
+            self.check_targets(n)
+        if self.enemy is not None:
+            self.update_enemy(n)
+            self.check_enemy(n)
+
+        # Return last env transition
+        return self.last()
+
+    def last(self):
+        """Transition - (state, reward, done, info)"""
+        return (self.state, self.reward, self.done, self.info)
+
+    def add_targets(self,
+                    index,
+                    targets,
+                    values,
+                    detection_radius=1,
+                    p_target=1.0):
+        """Add targets, and their values.
+        
+        Params
+        ------
+        index : list
+            The index of agents who act as targets (aka prey)
+        targets : list
+            Intial target (prey) locations
+        values : list
+            Intial target (prey) values
+        detection_radius : int (> 1)
+            How far the predator can 'see'
+        p_target : float (0-1)
+            Prob. predator find targets (in the detection_radius)
+        """
+        self.target_index = index
+
+        # Sanity
+        if len(index) != len(targets):
+            raise ValueError("index and targets must match.")
+        if len(targets) != len(values):
+            raise ValueError("targets and values must match.")
+
+        # Will it be there?
+        self.p_target = p_target
+
+        # Store raw targets simply (list)
+        self.num_targets = len(targets)
+        self.initial_targets = targets
+        self.targets = deepcopy(self.initial_targets)
+        self.values = deepcopy(values)
+        self.initial_values = deepcopy(values)
+        self.detection_radius = detection_radius
+
+        # Step targets
+        for i, t in zip(self.target_index, self.targets):
+            self.step(t, i)
+
+        # Init tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def update_targets(self, n):
+        """Move target to new location"""
+        # Update target location
+        if n in self.target_index:
+            i = self.target_index.index(n)
+            self.targets[i] = self.state[n]
+
+        # Rebuild tree
+        self._kd = KDTree(np.vstack(self.targets))
+
+    def check_targets(self, n):
+        """Check for targets, and update self.reward"""
+        # No targets
+        if self.targets is None:
+            return None
+
+        # Is 'n' a predator?
+        if n not in self.target_index:
+            # How far are targets?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd.query(state, k=1)
+
+            # Pick the closest
+            dist = float(dist[0])
+            ind = int(ind[0])
+            code = self.target_index[ind]
+
+            # What's the value?
+            value = self.values[ind]
+
+            # Are they in the radius?
+            if code not in self.dead:
+                if dist <= (self.detection_radius):
+                    # Detection coin flip:
+                    if self.np_random.rand() <= self.p_target:
+                        # Pret value is
+                        self.reward = value
+
+                        # Death to prey, if detection
+                        self.values[ind] = 0.0
+                        self.dead.append(code)
+                    else:
+                        self.reward = 0.0
+
+    def add_enemy(self, index, enemy, values, enemy_radius=1, p_enemy=1.0):
+        """Add targets, and their values.
+        
+        Params
+        ------
+        index : list
+            The index of agents who act as targets (aka prey)
+        enemy : list
+            Initial predator locations
+        values : list
+            Initial target (prey) values
+        enemy_radius : int (> 1)
+            How far the predators can 'see' each other
+        p_enemy : float (0-1)
+            Prob. predatos kill each other.
+        """
+        # An index to seperate enemies
+        # aka predators, when all are agents.
+        self.enemy_index = index
+
+        # Sanity check
+        if len(index) != len(enemy):
+            raise ValueError("index and enemies must match.")
+        if len(enemy) != len(values):
+            raise ValueError("enemies and values must match.")
+
+        # Will it be there?
+        self.p_enemy = p_enemy
+        self.enemy_radius = enemy_radius
+
+        # Store raw enemy simply (list)
+        self.num_enemies = len(enemy)
+
+        self.initial_enemy = deepcopy(enemy)
+        self.initial_enemy_values = deepcopy(values)
+
+        self.enemy = deepcopy(self.initial_enemy)
+        self.enemy_values = deepcopy(self.initial_enemy_values)
+
+        # Step enemy to initial positions
+        for i, t in zip(self.enemy_index, self.enemy):
+            self.step(t, i)
+
+        # Init Target tree (for fast lookup)
+        self._kd_enemy = KDTree(np.vstack(self.enemy))
+
+    def update_enemy(self, n):
+        """Move enemies to new location"""
+        # Update target location
+        if n in self.enemy_index:
+            i = self.enemy_index.index(n)
+            self.enemy[i] = self.state[n]
+
+        # Rebuild tree
+        self._kd_enemy = KDTree(np.vstack(self.enemy))
+
+    def check_enemy(self, n):
+        """Check for enemys, and update self.reward"""
+
+        # No enemy
+        if self.enemy is None:
+            return None
+
+        # Is 'n' a predator?
+        if n in self.enemy_index:
+            # How far are enemys?
+            state = np.atleast_2d(np.asarray(self.state[n]))
+            dist, ind = self._kd_enemy.query(state, k=2)
+
+            # Pick the closest (not itself, aka 0)
+            dist = float(dist[0][1])
+            ind = int(ind[0][1])
+            code = self.enemy_index[ind]
+
+            # What's the value?
+            value = self.enemy_values[ind]
+
+            # Are they in the radius?
+            if code not in self.dead:
+                if (0.0 < dist <= self.enemy_radius):
+                    # Detection coin flip:
+                    if self.np_random.rand() <= self.p_enemy:
+                        # Pred value is:
+                        self.reward = value
+                        self.enemy_values[ind] = 0.0
+                        # Death to pred, if detection
+                        self.dead_enemy.append((n, ind))
+                        self.dead.append(code)  # death if detection
+                    else:
+                        self.reward = 0.0
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def reset(self):
+        # Reinit
+        self.n = 0
+        self.state = [np.zeros(2) for _ in range(self.num_agents)]
+
+        # Restep targets and values
+        if self.initial_targets is not None:
+            self.values = deepcopy(self.initial_values)
+            self.targets = deepcopy(self.initial_targets)
+            for i, t in zip(self.target_index, self.targets):
+                self.step(t, i)
+
+        # Restep targets and values
+        if self.initial_enemy is not None:
+            self.enemy_values = deepcopy(self.initial_enemy_values)
+            self.enemy = deepcopy(self.initial_enemy)
+            for i, t in zip(self.enemy_index, self.enemy):
+                self.step(t, i)
+
+        # Revive the dead!
+        self.dead = []
+        self.dead_enemy = []
+
+        # Reset
+        self.reward = 0.0
+        self.last()
+
+    def render(self, mode='human', close=False):
+        pass
+
+
+class CutthroatGrid(CutthroatField):
+    """An open-ended grid world, with predators who attack everyone!.
+    
+    Params
+    -----
+    num_agents: int
+        The total number of agents
+    """
+    def __init__(self, num_agents=2):
+        super().__init__(num_agents=num_agents)
+
+    def step(self, action, n):
+        # Force int... so we are on a grid.
+        action = [int(a) for a in action]
+        super().step(action, n)
+
+        return self.last()
+
+
 # -------------------------------------------------------------------------
 # Scent functions
 # -------------------------------------------------------------------------
