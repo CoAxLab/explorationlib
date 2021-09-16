@@ -49,6 +49,24 @@ def action_entropy(exp_data, base=None):
     return totals
 
 
+def total_info_value(exp_data):
+    """Total value learning"""
+
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+
+    # !
+    target_name = "agent_info_value"
+
+    totals = []
+    for log in tqdm(exp_data, desc="info_value"):
+        infovalues = log[target_name]
+        totals.append(np.sum(infovalues))
+
+    return totals
+
+
 def total_reward(exp_data):
     """Total targets found"""
 
@@ -62,7 +80,6 @@ def total_reward(exp_data):
     totals = []
     for log in tqdm(exp_data, desc="total_reward"):
         rewards = log[target_name]
-        # Get stat
         totals.append(np.sum(rewards))
 
     return totals
