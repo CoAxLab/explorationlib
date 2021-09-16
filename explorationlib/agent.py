@@ -277,8 +277,8 @@ class WSLSGrid:
             E,
             next_pos,
             self.critic_E,
-            1.0,
-            1.0,
+            self.lr,  # Update to Qmax proper
+            self.gamma,
         )
 
     def forward(self, state):
@@ -315,6 +315,33 @@ class WSLSGrid:
         """Init RandomState"""
         self.np_random = np.random.RandomState(seed)
         return [seed]
+
+
+class DeterministicWSLSGrid(WSLSGrid):
+    def __init__(self, lr=0.1, gamma=0.1, boredom=0.001):
+        # Action space (NSEW)
+        possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        num_action = len(possible_actions)
+        initial_bins = np.linspace(0, 1, 10)
+
+        # Create agents
+        critic_R = CriticGrid(default_value=0.5)
+        critic_E = CriticGrid(default_value=np.log(num_action))
+        actor_R = SoftmaxActor(num_actions=4,
+                               actions=possible_actions,
+                               beta=50)
+        actor_E = SoftmaxActor(num_actions=4,
+                               actions=possible_actions,
+                               beta=50)
+        # !
+        super().__init__(actor_E,
+                         critic_E,
+                         actor_R,
+                         critic_R,
+                         initial_bins,
+                         lr=lr,
+                         gamma=gamma,
+                         boredom=boredom)
 
 
 class BanditAgent:
