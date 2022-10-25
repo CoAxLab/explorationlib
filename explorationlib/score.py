@@ -184,38 +184,40 @@ def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
     if isinstance(exp_data, str):
         exp_data = load(exp_data)
     
-    on_patch_steps  = 0
-    off_patch_steps = 0
+    on_patch_steps  = []
+    off_patch_steps = []
     
     var_name="exp_state"
     
-    # fmt
-    states_vec = exp_data[var_name]
-    states = [list() for _ in range(num_agents)]
-
-    # # defaults
-    # if colors is None:
-    #     colors = [None for _ in range(num_agents)]
-    # if labels is None:
-    #     labels = [None for _ in range(num_agents)]
-
-    # repack
-    for s in states_vec:
-        for n in range(num_agents):
-            states[n].append(s[n])
-    states = [np.vstack(state) for state in states]
+    for log in tqdm(exp_data, desc="num_death"):
+        
+        on_patch_step  = 0
+        off_patch_step = 0
     
-    for i, state in enumerate(states):
-        xs = state[:, 0]
-        ys = state[:, 1]
+        # fmt
+        states_vec = exp_data[var_name]
+        states = [list() for _ in range(num_agents)]
+    
+        # repack
+        for s in states_vec:
+            for n in range(num_agents):
+                states[n].append(s[n])
+        states = [np.vstack(state) for state in states]
         
-        for x, y in zip(xs, ys):
-            for patch_loc in patch_locs:
-                if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
-                    on_patch_steps += 1
-                else:
-                    off_patch_steps += 1
+        for i, state in enumerate(states):
+            xs = state[:, 0]
+            ys = state[:, 1]
+            
+            for x, y in zip(xs, ys):
+                for patch_loc in patch_locs:
+                    if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
+                        on_patch_steps += 1
+                    else:
+                        off_patch_step += 1
         
+        on_patch_steps.append(on_patch_step)
+        off_patch_steps.append(off_patch_step)
+            
     return on_patch_steps, off_patch_steps
 
 
