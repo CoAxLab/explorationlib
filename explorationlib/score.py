@@ -199,22 +199,18 @@ def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
         states = [list() for _ in range(num_agents)]
     
         # repack
-        for s in states_vec:
-            for n in range(num_agents):
-                states[n].append(s[n])
-        states = [np.vstack(state) for state in states]
+        states = np.array(states_vec)
         
-        for i, state in enumerate(states):
-            xs = state[:, 0]
-            ys = state[:, 1]
-            
-            for x, y in zip(xs, ys):
-                for patch_loc in patch_locs:
-                    if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
-                        on_patch_steps += 1
-                    else:
-                        off_patch_step += 1
+        xs = states[:, 0]
+        ys = states[:, 1]
         
+        for x, y in zip(xs, ys):
+            for patch_loc in patch_locs:
+                if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
+                    on_patch_steps += 1
+                else:
+                    off_patch_step += 1
+    
         on_patch_steps.append(on_patch_step)
         off_patch_steps.append(off_patch_step)
             
