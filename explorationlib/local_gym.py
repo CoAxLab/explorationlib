@@ -1402,7 +1402,7 @@ def uniform_patch_targets(N, shape, radius, N_per_patch, prng=None):
     
     targets = []
     for patch_loc in patch_locs:
-        for i in range(N):
+        for i in range(N_per_patch):
             # https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
             r = radius * np.sqrt(prng.random())
             theta = prng.random() * 2 * np.pi
