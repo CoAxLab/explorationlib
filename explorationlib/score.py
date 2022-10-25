@@ -177,6 +177,44 @@ def search_efficiency(exp_data):
     return effs
 
 
+def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
+    """Time steps within vs between patches for multiple runs"""
+    
+    on_patch_steps  = 0
+    off_patch_steps = 0
+    
+    var_name="exp_state"
+    
+    # fmt
+    states_vec = exp_data[var_name]
+    states = [list() for _ in range(num_agents)]
+
+    # # defaults
+    # if colors is None:
+    #     colors = [None for _ in range(num_agents)]
+    # if labels is None:
+    #     labels = [None for _ in range(num_agents)]
+
+    # repack
+    for s in states_vec:
+        for n in range(num_agents):
+            states[n].append(s[n])
+    states = [np.vstack(state) for state in states]
+    
+    for i, state in enumerate(states):
+        xs = state[:, 0]
+        ys = state[:, 1]
+        
+        for x, y in zip(xs, ys):
+            for patch_loc in patch_locs:
+                if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
+                    on_patch_steps += 1
+                else:
+                    off_patch_steps += 1
+        
+    return on_patch_steps, off_patch_steps
+
+
 if __name__ == "__main__":
     import fire
     fire.Fire({
