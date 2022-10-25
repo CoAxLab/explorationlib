@@ -180,6 +180,10 @@ def search_efficiency(exp_data):
 def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
     """Time steps within vs between patches for multiple runs"""
     
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+    
     on_patch_steps  = 0
     off_patch_steps = 0
     
