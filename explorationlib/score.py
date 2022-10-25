@@ -207,7 +207,7 @@ def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
         for x, y in zip(xs, ys):
             for patch_loc in patch_locs:
                 if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
-                    on_patch_steps += 1
+                    on_patch_step += 1
                 else:
                     off_patch_step += 1
     
