@@ -189,13 +189,13 @@ def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
     
     var_name="exp_state"
     
-    for log in tqdm(exp_data, desc="num_death"):
+    for log in tqdm(exp_data, desc="on_off_patch_time"):
         
         on_patch_step  = 0
         off_patch_step = 0
     
         # fmt
-        states_vec = exp_data[var_name]
+        states_vec = log[var_name]
         states = [list() for _ in range(num_agents)]
     
         # repack
