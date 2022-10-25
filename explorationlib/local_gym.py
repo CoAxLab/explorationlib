@@ -1402,12 +1402,13 @@ def uniform_patch_targets(N, shape, radius, N_per_patch, prng=None):
     
     targets = []
     for patch_loc in patch_locs:
-        # https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
-        r = radius * np.sqrt(prng.random())
-        theta = prng.random() * 2 * np.pi
-        x = patch_loc[0] + r * np.cos(theta)
-        y = patch_loc[1] + r * np.sin(theta)
-        targets.append(np.array([x,y]))
+        for i in range(N):
+            # https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+            r = radius * np.sqrt(prng.random())
+            theta = prng.random() * 2 * np.pi
+            x = patch_loc[0] + r * np.cos(theta)
+            y = patch_loc[1] + r * np.sin(theta)
+            targets.append(np.array([x,y]))
     
     return targets, patch_locs
 
