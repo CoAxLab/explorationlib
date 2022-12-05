@@ -265,7 +265,7 @@ def plot_targets2d(env,
                    alpha=1.0,
                    label=None,
                    title=None,
-                   differ = None
+                   differ = None,
                    ax=None):
 
     # No targets no plot
