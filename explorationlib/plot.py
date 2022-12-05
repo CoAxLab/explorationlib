@@ -31,7 +31,7 @@ def show_gif(name):
 #               figsize=(4, 4),
 #               boundary=(50, 50),
 #               interval=200):
-#     """Replay an experiment, as a movie.
+#     """Replay an experiment, as a movie. FUCK
 
 #     NOTE: can be very slow to run for experiments
 #     with more than a couple thousand steps.
