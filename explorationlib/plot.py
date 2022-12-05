@@ -261,11 +261,11 @@ def plot_scent_grid(env,
 def plot_targets2d(env,
                    figsize=(3, 3),
                    boundary=(1, 1),
-                   color="black",
+                   color=None,
                    alpha=1.0,
                    label=None,
                    title=None,
-                   differ = None,
+                   differ=None,
                    ax=None):
 
     # No targets no plot
@@ -288,7 +288,7 @@ def plot_targets2d(env,
         return
     else:
         dx = ["black", "red"]
-        for i in range(len(env.targets):
+        for i in range(len(env.targets)):
             dy = env.targets[i - 1]
             dz = dx[dy]
                    
