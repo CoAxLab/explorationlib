@@ -500,7 +500,7 @@ def plot_length_hist(exp_data,
 
 
 
-def plot_targets2d(env,
+def plot_targets2dX(env,
                    figsize=(3, 3),
                    boundary=(1, 1),
                    color=color,
