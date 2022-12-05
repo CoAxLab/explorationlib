@@ -288,7 +288,7 @@ def plot_targets2d(env,
         return
     else:
         dx = ["black", "red"]
-        for i in range(len(env.targets)):
+        for i in range(len(env.targets)): ##Change the color hopefully
             dy = env.targets[i - 1]
             dz = dx[dy]
                    
