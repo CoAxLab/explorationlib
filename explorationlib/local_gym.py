@@ -1595,8 +1595,8 @@ class ScentGridMovingTargets(Grid):
             self.obs = self.scent_fn((x, y))
         else:
             self.obs = 0.0
-
-        if 
+            
+        # if statement here
             
         # !
         self.state_obs = (self.state, self.obs)
