@@ -1500,3 +1500,113 @@ def gamma_values(targets, shape=1.0, scale=2.0, prng=None):
 def levy_values(targets, exponent=2.0, prng=None):
     prng = _init_prng(prng)
     return np.power(prng.uniform(size=len(targets)), (-1 / exponent))
+
+# ---
+class ScentGridMovingTargets(Grid):
+    """Am open-grid, with scent and moving targets"""
+    def __init__(self, mode="discrete"):
+        super().__init__(mode=mode)
+        self.scent = None
+        self.scent_fn = None
+        self.obs = 0.0
+
+    def add_scent(self,
+                  target,
+                  value,
+                  coord,
+                  scent,
+                  detection_radius=1.0,
+                  noise_sigma=0.0,
+                  p_target=1.0):
+        # Offset coords by target location
+        # align them in other words
+        self.scent_x_coord = coord[0] + target[0]
+        self.scent_y_coord = coord[1] + target[1]
+
+        # Set scent and its params
+        self.noise_sigma = noise_sigma
+        self.scent_pdf = scent
+        self.add_targets([target], [value],
+                         detection_radius=detection_radius,
+                         kd_kwargs=None,
+                         p_target=p_target)
+
+        def scent_fn(state):
+            x, y = state
+            i = find_nearest(self.scent_x_coord, x)
+            j = find_nearest(self.scent_y_coord, y)
+
+            # Add noise?
+            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            return self.scent_pdf[i, j] + noise
+
+        self.scent_fn = scent_fn
+
+    def add_scents(
+            self,
+            targets,
+            values,
+            coord,  # assume shared
+            scents,
+            detection_radius=1.0,
+            noise_sigma=0.0,
+            p_target=1.0):
+        """Add several scents, and targets"""
+        self.noise_sigma = noise_sigma
+        self.scent_pdfs = scents
+        self.add_targets(targets,
+                         values,
+                         detection_radius=detection_radius,
+                         kd_kwargs=None,
+                         p_target=p_target)
+
+        # Offset coords by target location
+        # align them in other words
+        self.scent_x_coords = []
+        self.scent_y_coords = []
+        for target in self.targets:
+            self.scent_x_coords.append(coord[0] + target[0])
+            self.scent_y_coords.append(coord[1] + target[1])
+
+        def scent_fn(state):
+            # Pos
+            x, y = state
+
+            # Sum scents from all targets @ pos
+            summed = 0.0
+            for ind in range(self.num_targets):
+                i = find_nearest(self.scent_x_coords[ind], x)
+                j = find_nearest(self.scent_y_coords[ind], y)
+                summed += self.scent_pdfs[ind][i, j]
+
+            # Add noise?
+            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            return summed + noise
+
+        self.scent_fn = scent_fn
+
+    def step(self, action):
+        # Move
+        super().step(action)  # sets self.ind, etc
+
+        # Scent
+        if self.scent_fn is not None:
+            x, y = int(self.state[0]), int(self.state[1])
+            self.obs = self.scent_fn((x, y))
+        else:
+            self.obs = 0.0
+
+        if 
+            
+        # !
+        self.state_obs = (self.state, self.obs)
+        return self.last()
+
+    def last(self):
+        return (self.state_obs, self.reward, self.done, self.info)
+
+    def reset(self):
+        self.state = np.zeros(2, dtype=int)
+        self.obs = 0.0
+        self.state_obs = (self.state, self.obs)
+        self.last()
