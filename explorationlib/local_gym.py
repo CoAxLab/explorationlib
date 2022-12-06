@@ -18,6 +18,8 @@ from explorationlib.agent import Levy2d
 import warnings
 warnings.filterwarnings("ignore")
 
+countSteps = 0
+
 # -------------------------------------------------------------------------
 # Enviroments
 
@@ -591,7 +593,6 @@ class ScentGrid(Grid):
 # ---
 class ScentGridMovingTargets(Grid):
     """An open-grid, with scent and moving targets"""
-    countSteps = 0
     def __init__(self, mode="discrete"):
         super().__init__(mode=mode)
         self.scent = None
