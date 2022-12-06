@@ -681,6 +681,10 @@ class ScentGridMovingTargets(Grid):
             self.obs = self.scent_fn((x, y))
         else:
             self.obs = 0.0
+            
+        # New FP Code
+        print(target)
+        print("hi")
 
         # !
         self.state_obs = (self.state, self.obs)
