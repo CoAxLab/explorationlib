@@ -284,37 +284,19 @@ def plot_targets2d(env,
         ax = fig.add_subplot(111)
        
 
-    if differ == None:
-        ax.scatter(    
-            vec[:, 0],
-            vec[:, 1],
-            env.values,  # value is size, literal
-            color="black",
-            label=label,
-            alpha=alpha)
-        ax.set_xlim(-boundary[0], boundary[0])
-        ax.set_ylim(-boundary[1], boundary[1])
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
+
+    ax.scatter(    
+        vec[:, 0],
+        vec[:, 1],
+        env.values,  # value is size, literal
+        color="black",
+        label=label,
+        alpha=alpha)
+    ax.set_xlim(-boundary[0], boundary[0])
+    ax.set_ylim(-boundary[1], boundary[1])
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
         
-    else:
-        dx = ["black", "red"]
-        for i in range(len(env.targets)): ##Change the color hopefully
-            dy = env.targets[i - 1]
-            dz = dx[dy]
-                   
-            ax.scatter(
-                vec[:, 0],
-                vec[:, 1],
-                env.values,  # value is size, literal
-                color=dz,
-                label=label,
-                alpha=alpha)
-            ax.set_xlim(-boundary[0], boundary[0])
-            ax.set_ylim(-boundary[1], boundary[1])
-            ax.set_xlabel("x")
-            ax.set_ylabel("y")
-                       
                        
     # Labels, legends, titles?
     if title is not None:
