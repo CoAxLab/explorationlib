@@ -555,14 +555,14 @@ class ScentGrid(Grid):
 
             # Sum scents from all targets @ pos
             summed = 0.0
-            for ind in range(self.num_targets):
-                i = find_nearest(self.scent_x_coords[ind], x)
-                j = find_nearest(self.scent_y_coords[ind], y)
-                summed += self.scent_pdfs[ind][i, j]
+            #for ind in range(self.num_targets):
+                #i = find_nearest(self.scent_x_coords[ind], x)
+                #j = find_nearest(self.scent_y_coords[ind], y)
+                #summed += self.scent_pdfs[ind][i, j]
 
             # Add noise?
-            noise = np.abs(self.np_random.normal(0, self.noise_sigma))
-            return summed + noise
+            #noise = np.abs(self.np_random.normal(0, self.noise_sigma))
+            #return summed + noise
 
         self.scent_fn = scent_fn
 
