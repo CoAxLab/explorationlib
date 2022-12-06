@@ -683,9 +683,18 @@ class ScentGridMovingTargets(Grid):
             self.obs = 0.0
             
         # New FP Code
-        print(target)
-        print("hi")
-
+        for target in self.targets:
+            target[0] += random.randint(-3, 3)
+            if target[0] > 10:
+                target[0] = 10
+            elif target[0] < -10:
+                target[0] = -10
+            target[1] += random.randint(-3, 3)
+            if target[1] > 10:
+                target[1] = 10
+            elif target[1] < -10:
+                target[1] = -10
+                
         # !
         self.state_obs = (self.state, self.obs)
         return self.last()
