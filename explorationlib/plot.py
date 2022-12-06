@@ -257,7 +257,7 @@ def plot_scent_grid(env,
 
     return ax
 
-'''
+
 def plot_targets2d(env,
                    figsize=(3, 3),
                    boundary=(1, 1),
@@ -356,7 +356,7 @@ def plot_targets2d(env,
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     return ax
-
+'''
 def plot_position2d(exp_data,
                     boundary=(1, 1),
                     figsize=(3, 3),
