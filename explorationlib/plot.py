@@ -24,14 +24,14 @@ def show_gif(name):
     return display.HTML(f'<img src="data:image/gif;base64,{b64}" />')
 
 
-# def render_2d(name,
+# def render_(name,
 #               env,
 #               exp_data,
 #               num_experiment=0,
 #               figsize=(4, 4),
 #               boundary=(50, 50),
 #               interval=200):
-#     """Replay an experiment, as a movie.
+#     """Replay an experiment, as a movie. FUCK
 
 #     NOTE: can be very slow to run for experiments
 #     with more than a couple thousand steps.
@@ -261,17 +261,18 @@ def plot_scent_grid(env,
 def plot_targets2d(env,
                    figsize=(3, 3),
                    boundary=(1, 1),
-                   color="black",
+                   color=None,
                    alpha=1.0,
                    label=None,
                    title=None,
+                   differ=None,
                    ax=None):
 
     # No targets no plot
     if env.targets is None:
         return None
 
-    # Fmt
+        # Fmt
     try:
         vec = np.vstack(env.initial_targets)
     except AttributeError:
@@ -281,20 +282,40 @@ def plot_targets2d(env,
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
+       
 
-    # !
-    ax.scatter(
-        vec[:, 0],
-        vec[:, 1],
-        env.values,  # value is size, literal
-        color=color,
-        label=label,
-        alpha=alpha)
-    ax.set_xlim(-boundary[0], boundary[0])
-    ax.set_ylim(-boundary[1], boundary[1])
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-
+    if differ == None:
+        ax.scatter(    
+            vec[:, 0],
+            vec[:, 1],
+            env.values,  # value is size, literal
+            color="black",
+            label=label,
+            alpha=alpha)
+        ax.set_xlim(-boundary[0], boundary[0])
+        ax.set_ylim(-boundary[1], boundary[1])
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        
+    else:
+        dx = ["black", "red"]
+        for i in range(len(env.targets)): ##Change the color hopefully
+            dy = env.targets[i - 1]
+            dz = dx[dy]
+                   
+            ax.scatter(
+                vec[:, 0],
+                vec[:, 1],
+                env.values,  # value is size, literal
+                color=dz,
+                label=label,
+                alpha=alpha)
+            ax.set_xlim(-boundary[0], boundary[0])
+            ax.set_ylim(-boundary[1], boundary[1])
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+                       
+                       
     # Labels, legends, titles?
     if title is not None:
         ax.set_title(title)
@@ -496,3 +517,6 @@ def plot_length_hist(exp_data,
         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     return ax
+
+
+
