@@ -677,7 +677,7 @@ class ScentGridMovingTargets(Grid):
     def step(self, action):
         # Move
         super().step(action)  # sets self.ind, etc
-        countSteps += 1
+        global countSteps += 1
 
         # Scent
         if self.scent_fn is not None:
