@@ -289,7 +289,7 @@ def plot_targets2d(env,
         vec[:, 0],
         vec[:, 1],
         env.values,  # value is size, literal
-        color="black",
+        color=color,
         label=label,
         alpha=alpha)
     ax.set_xlim(-boundary[0], boundary[0])
