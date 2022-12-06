@@ -18,7 +18,7 @@ from explorationlib.agent import Levy2d
 import warnings
 warnings.filterwarnings("ignore")
 
-countSteps = 0
+#countSteps = 0
 
 # -------------------------------------------------------------------------
 # Enviroments
@@ -677,7 +677,7 @@ class ScentGridMovingTargets(Grid):
     def step(self, action):
         # Move
         super().step(action)  # sets self.ind, etc
-        global countSteps = global countSteps + 1
+        #global countSteps += 1
 
         # Scent
         if self.scent_fn is not None:
@@ -688,18 +688,18 @@ class ScentGridMovingTargets(Grid):
             
         # New FP Code
         for target in self.targets:
-            if countSteps%50 == 0:
-                print("countSteps = ", countSteps)
-                target[0] += random.randint(-3, 3)
-                if target[0] > 10:
-                    target[0] = 10
-                elif target[0] < -10:
-                    target[0] = -10
-                target[1] += random.randint(-3, 3)
-                if target[1] > 10:
-                    target[1] = 10
-                elif target[1] < -10:
-                    target[1] = -10
+            #if countSteps%50 == 0:
+            #print("countSteps = ", countSteps)
+            target[0] += random.randint(-3, 3)
+            if target[0] > 10:
+                target[0] = 10
+            elif target[0] < -10:
+                target[0] = -10
+            target[1] += random.randint(-3, 3)
+            if target[1] > 10:
+                target[1] = 10
+            elif target[1] < -10:
+                target[1] = -10
                 
         # !
         self.state_obs = (self.state, self.obs)
