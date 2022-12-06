@@ -657,7 +657,7 @@ class ScentGridMovingTargets(Grid):
             self.scent_x_coords.append(coord[0] + target[0])
             self.scent_y_coords.append(coord[1] + target[1])
 
-        def scent_fn(state):
+        '''def scent_fn(state):
             # Pos
             x, y = state
 
@@ -672,7 +672,7 @@ class ScentGridMovingTargets(Grid):
             noise = np.abs(self.np_random.normal(0, self.noise_sigma))
             return summed + noise
 
-        self.scent_fn = scent_fn
+        self.scent_fn = scent_fn'''
 
     def step(self, action):
         # Move
