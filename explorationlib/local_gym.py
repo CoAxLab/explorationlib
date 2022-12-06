@@ -686,13 +686,17 @@ class ScentGridMovingTargets(Grid):
         for target in self.targets:
             target[0] += random.randint(-3, 3)
             if target[0] > 10:
+                print("target[0] > 10")
                 target[0] = 10
             elif target[0] < -10:
+                print("target[0] < -10")
                 target[0] = -10
             target[1] += random.randint(-3, 3)
             if target[1] > 10:
+                print("target[1] > 10")
                 target[1] = 10
             elif target[1] < -10:
+                print("target[1] < -10")
                 target[1] = -10
                 
         # !
