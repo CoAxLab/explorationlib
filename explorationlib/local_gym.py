@@ -591,6 +591,7 @@ class ScentGrid(Grid):
 # ---
 class ScentGridMovingTargets(Grid):
     """An open-grid, with scent and moving targets"""
+    countSteps = 0
     def __init__(self, mode="discrete"):
         super().__init__(mode=mode)
         self.scent = None
@@ -675,6 +676,7 @@ class ScentGridMovingTargets(Grid):
     def step(self, action):
         # Move
         super().step(action)  # sets self.ind, etc
+        countSteps += 1
 
         # Scent
         if self.scent_fn is not None:
@@ -685,20 +687,18 @@ class ScentGridMovingTargets(Grid):
             
         # New FP Code
         for target in self.targets:
-            target[0] += random.randint(-3, 3)
-            if target[0] > 10:
-                print("target[0] > 10")
-                target[0] = 10
-            elif target[0] < -10:
-                print("target[0] < -10")
-                target[0] = -10
-            target[1] += random.randint(-3, 3)
-            if target[1] > 10:
-                print("target[1] > 10")
-                target[1] = 10
-            elif target[1] < -10:
-                print("target[1] < -10")
-                target[1] = -10
+            if countSteps%50 == 0:
+                print("countSteps = ", countSteps)
+                target[0] += random.randint(-3, 3)
+                if target[0] > 10:
+                    target[0] = 10
+                elif target[0] < -10:
+                    target[0] = -10
+                target[1] += random.randint(-3, 3)
+                if target[1] > 10:
+                    target[1] = 10
+                elif target[1] < -10:
+                    target[1] = -10
                 
         # !
         self.state_obs = (self.state, self.obs)
