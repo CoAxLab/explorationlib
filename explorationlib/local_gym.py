@@ -702,7 +702,25 @@ class ScentGridMovingTargets(Grid):
             elif target[1] < -10:
                 target[1] = -10
             newTargets.append(target)
-        self.add_targets(newTargets, self.values)
+        #self.add_targets(newTargets, self.values)
+        values = self.values
+        targets = newTargets
+
+        scentsX = []
+        count = 0
+        for _ in range(num_targets):
+          if values[count] == 1:
+            newAmp = 1
+            newSig = 2
+          else:
+            newAmp = 1.5
+            newSig = 1.75
+
+          coord, scent = create_grid_scent_patches(
+            target_boundary, p=1.0, amplitude=newAmp, sigma=newSig)
+          scentsX.append(scent)
+          count += 1
+        self.add_scents(targets, values, coord, scentsX, noise_sigma=noise_sigma)
                 
         # !
         self.state_obs = (self.state, self.obs)
