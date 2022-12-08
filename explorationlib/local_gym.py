@@ -559,7 +559,6 @@ class ScentGrid(Grid):
                 i = find_nearest(self.scent_x_coords[ind], x)
                 j = find_nearest(self.scent_y_coords[ind], y)
                 summed += self.scent_pdfs[ind][i, j]
-                print("regular scentgrid = ", self.scent_pdfs[ind][i, j])
 
             # Add noise?
             noise = np.abs(self.np_random.normal(0, self.noise_sigma))
@@ -667,8 +666,6 @@ class ScentGridMovingTargets(Grid):
             for ind in range(self.num_targets):
                 i = find_nearest(self.scent_x_coords[ind], x)
                 j = find_nearest(self.scent_y_coords[ind], y)
-                print("movinggrid summed = ", summed)
-                print("movinggrid = ", self.scent_pdfs[ind][i, j])
                 summed += self.scent_pdfs[ind][i, j]
 
             # Add noise?
