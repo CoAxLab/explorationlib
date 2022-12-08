@@ -708,7 +708,7 @@ class ScentGridMovingTargets(Grid):
 
         scentsX = []
         count = 0
-        for _ in range(len(targets):
+        for _ in range(len(targets)):
           if values[count] == 1:
             newAmp = 1
             newSig = 2
