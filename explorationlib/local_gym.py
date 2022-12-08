@@ -687,6 +687,7 @@ class ScentGridMovingTargets(Grid):
             self.obs = 0.0
             
         # New FP Code
+        newTargets = []
         for target in self.targets:
             #if countSteps%50 == 0:
             #print("countSteps = ", countSteps)
@@ -700,6 +701,8 @@ class ScentGridMovingTargets(Grid):
                 target[1] = 10
             elif target[1] < -10:
                 target[1] = -10
+            newTargets.append(target)
+        self.add_targets(newTargets, self.values)
                 
         # !
         self.state_obs = (self.state, self.obs)
