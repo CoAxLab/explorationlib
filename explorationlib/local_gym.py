@@ -717,7 +717,7 @@ class ScentGridMovingTargets(Grid):
             newSig = 1.75
 
           coord, scent = create_grid_scent_patches(
-            target_boundary, p=1.0, amplitude=newAmp, sigma=newSig)
+            (10, 10), p=1.0, amplitude=newAmp, sigma=newSig)
           scentsX.append(scent)
           count += 1
         self.add_scents(targets, values, coord, scentsX, noise_sigma=noise_sigma)
