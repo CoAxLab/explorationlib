@@ -666,6 +666,7 @@ class ScentGridMovingTargets(Grid):
             for ind in range(self.num_targets):
                 i = find_nearest(self.scent_x_coords[ind], x)
                 j = find_nearest(self.scent_y_coords[ind], y)
+                print(summed)
                 summed += self.scent_pdfs[ind][i, j]
 
             # Add noise?
