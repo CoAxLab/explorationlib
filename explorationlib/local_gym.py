@@ -720,7 +720,7 @@ class ScentGridMovingTargets(Grid):
             (10, 10), p=1.0, amplitude=newAmp, sigma=newSig)
           scentsX.append(scent)
           count += 1
-        self.add_scents(targets, values, coord, scentsX, noise_sigma=noise_sigma)
+        self.add_scents(targets, values, coord, scentsX, noise_sigma=self.noise_sigma)
                 
         # !
         self.state_obs = (self.state, self.obs)
