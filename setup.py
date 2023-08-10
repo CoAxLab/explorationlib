@@ -8,5 +8,5 @@ setup(name='explorationlib',
       author='Erik J. Peterson',
       author_email='erik.exists@gmail.com',
       license='GPL3',
-      packages=find_packages(include=['explorationlib', 'ADMCode', 'ADMCode.snuz', 'ADMCode.snuz.ars', 'ADMCode.snuz.ppo', 'ADMCode.snuz.ppo.agents']),
+      packages=find_packages(['explorationlib', 'explorationlib.*']),
       zip_safe=False)
