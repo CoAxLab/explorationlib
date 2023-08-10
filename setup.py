@@ -8,5 +8,5 @@ setup(name='explorationlib',
       author='Erik J. Peterson',
       author_email='erik.exists@gmail.com',
       license='GPL3',
-      packages=['explorationlib', 'explorationlib.ADMCode'],
+      packages=find_packages(include=['explorationlib', 'explorationlib.*']),
       zip_safe=False)
