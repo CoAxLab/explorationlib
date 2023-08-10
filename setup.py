@@ -7,5 +7,15 @@ setup(name='explorationlib',
       author='Erik J. Peterson',
       author_email='erik.exists@gmail.com',
       license='GPL3',
-      packages=['explorationlib', 'ADMCode'],
+      packages=['explorationlib'],
+      zip_safe=False)
+
+setup(name='ADMCode',
+      version='0.0.1',
+      description="Tools to simulate biological exploration.",
+      url='',
+      author='Erik J. Peterson',
+      author_email='erik.exists@gmail.com',
+      license='GPL3',
+      packages=['ADMCode'],
       zip_safe=False)
