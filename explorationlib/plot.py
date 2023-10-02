@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.collections as mcoll
-import matplotlib.path as mpath
 import seaborn as sns
 
 from explorationlib.util import load
@@ -350,9 +348,7 @@ def plot_positions2d(exp_data,
                      title=None,
                      competitive=True,
                      var_name="exp_state",
-                     ax=None,
-                     gradient_lines=False,
-                     ):
+                     ax=None):
     # fmt
     states_vec = exp_data[var_name]
     states = [list() for _ in range(num_agents)]
@@ -375,33 +371,12 @@ def plot_positions2d(exp_data,
         ax = fig.add_subplot(111)
 
     # !
-    if gradient_lines and colors[0] is None:
-        colormaps = [plt.get_cmap(map_) for map_ in ['Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
-                                                 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
-                                                 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn']]
-        colormaps_iter = iter(colormaps)
-        for i, state in enumerate(states):
-            color = next(colormaps_iter)
-            if color is None:
-                colormaps_iter = iter(colormaps)
-                color = next(colormaps_iter)
-            lines = []
-            ln = colorline(state[:, 0],
-                    state[:, 1],
-                    cmap=color,
-                    label=labels[i],
-                    alpha=alpha,
-                    ax=ax,
-                    )
-            lines.append(ln)
-            # ax.legend(lines, ["line1", "line2"])
-    else:
-        for i, state in enumerate(states):
-            ax.plot(state[:, 0],
-                    state[:, 1],
-                    color=colors[i],
-                    label=labels[i],
-                    alpha=alpha)
+    for i, state in enumerate(states):
+        ax.plot(state[:, 0],
+                state[:, 1],
+                color=colors[i],
+                label=labels[i],
+                alpha=alpha)
     ax.set_xlim(-boundary[0], boundary[0])
     ax.set_ylim(-boundary[1], boundary[1])
     ax.set_xlabel("x")
@@ -411,58 +386,9 @@ def plot_positions2d(exp_data,
     if title is not None:
         ax.set_title(title)
     if labels[0] is not None:
-        if gradient_lines:
-            ax.legend(lines, labels, loc='center left', bbox_to_anchor=(1, 0.5))
-        else:
-            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     return ax
-
-
-def colorline(
-    x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0, 1.0),
-        linewidth=3, alpha=1.0, label=None, ax=None):
-    """
-    http://nbviewer.ipython.org/github/dpsanders/matplotlib-examples/blob/master/colorline.ipynb
-    http://matplotlib.org/examples/pylab_examples/multicolored_line.html
-    Plot a colored line with coordinates x and y
-    Optionally specify colors in the array z
-    Optionally specify a colormap, a norm function and a line width
-    """
-
-    # Default colors equally spaced on [0,1]:
-    if z is None:
-        z = np.linspace(0.0, 1.0, len(x))
-
-    # Special case if a single number:
-    if not hasattr(z, "__iter__"):  # to check for numerical input -- this is a hack
-        z = np.array([z])
-
-    z = np.asarray(z)
-
-    segments = make_segments(x, y)
-    lc = mcoll.LineCollection(segments, array=z, cmap=cmap, norm=norm,
-                              linewidth=linewidth, alpha=alpha, label=label)
-    print('here')
-    if ax is None:
-        ax = plt.gca()
-    ax.add_collection(lc)
-    # if label is not None:
-    #     ax.set_label(label)
-
-    return lc
-
-
-def make_segments(x, y):
-    """
-    Create list of line segments from x and y coordinates, in the correct format
-    for LineCollection: an array of the form numlines x (points per line) x 2 (x
-    and y) array
-    """
-
-    points = np.array([x, y]).T.reshape(-1, 1, 2)
-    segments = np.concatenate([points[:-1], points[1:]], axis=1)
-    return segments
 
 
 def plot_length(exp_data,
