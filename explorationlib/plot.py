@@ -389,7 +389,9 @@ def plot_positions2d(exp_data,
                     state[:, 1],
                     cmap=color,
                     label=labels[i],
-                    alpha=alpha)
+                    alpha=alpha,
+                    ax=ax,
+                    )
     else:
         for i, state in enumerate(states):
             ax.plot(state[:, 0],
@@ -413,7 +415,7 @@ def plot_positions2d(exp_data,
 
 def colorline(
     x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0, 1.0),
-        linewidth=3, alpha=1.0, label=None):
+        linewidth=3, alpha=1.0, label=None, ax=None):
     """
     http://nbviewer.ipython.org/github/dpsanders/matplotlib-examples/blob/master/colorline.ipynb
     http://matplotlib.org/examples/pylab_examples/multicolored_line.html
@@ -436,7 +438,8 @@ def colorline(
     lc = mcoll.LineCollection(segments, array=z, cmap=cmap, norm=norm,
                               linewidth=linewidth, alpha=alpha, label=label)
     print('here')
-    ax = plt.gca()
+    if ax is None:
+        ax = plt.gca()
     ax.add_collection(lc)
     # if label is not None:
     #     ax.set_label(label)
