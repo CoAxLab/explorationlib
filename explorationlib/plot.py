@@ -385,13 +385,16 @@ def plot_positions2d(exp_data,
             if color is None:
                 colormaps_iter = iter(colormaps)
                 color = next(colormaps_iter)
-            colorline(state[:, 0],
+            lines = []
+            ln = colorline(state[:, 0],
                     state[:, 1],
                     cmap=color,
                     label=labels[i],
                     alpha=alpha,
                     ax=ax,
                     )
+            lines.append(ln)
+            # ax.legend(lines, ["line1", "line2"])
     else:
         for i, state in enumerate(states):
             ax.plot(state[:, 0],
@@ -408,7 +411,10 @@ def plot_positions2d(exp_data,
     if title is not None:
         ax.set_title(title)
     if labels[0] is not None:
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        if gradient_lines:
+            ax.legend(lines, labels, loc='center left', bbox_to_anchor=(1, 0.5))
+        else:
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     return ax
 
