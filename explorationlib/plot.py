@@ -434,12 +434,12 @@ def colorline(
 
     segments = make_segments(x, y)
     lc = mcoll.LineCollection(segments, array=z, cmap=cmap, norm=norm,
-                              linewidth=linewidth, alpha=alpha)
+                              linewidth=linewidth, alpha=alpha, label=label)
 
     ax = plt.gca()
     ax.add_collection(lc)
-    if label is not None:
-        ax.set_label(label)
+    # if label is not None:
+    #     ax.set_label(label)
 
     return lc
 
