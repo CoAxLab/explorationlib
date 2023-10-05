@@ -2106,3 +2106,81 @@ class Diffusion2d(Agent2d):
         self.step = 0
         self.total_distance = 0.0
         self.history = defaultdict(list)
+
+class GreedyPredatorGrid(Agent2d):
+    """Greedily moves towards nearest other agent on the grid. 
+       Must use with multi_experiment().
+       Note: Agnostic to agent type & whether the other agents are prey/predator.
+             Future implementation might take into account agent type.
+    """
+
+    def __init__(self, step_size=1):
+        super().__init__()
+        self.env = env
+        self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        self.step_size = int(step_size)
+        if self.step_size < 1:
+            raise ValueError("step musst be >= 1")
+
+        self.reset()
+
+    def _angle(self, state):
+        i = int(self.np_random.randint(0, len(self.possible_actions)))
+        return self.possible_actions[i]
+
+    def _l(self, state):
+        """Sample length"""
+        i = 0
+        while True and i < 10000:
+            i += 1
+            l = self.np_random.exponential(self.scale)
+            l = int(l)
+            if l > self.min_length:
+                return l
+
+    def forward(self, state):
+        """Step forward greedily toward nearest other agent.
+
+          state is assumed to be list len()==2:
+          - state[0]: 2x1 state of this agent
+          - state[1]: list of 2x1, states of all other agents
+        """
+
+        # greedily choose angle
+        state_agent = state[0]
+        states_others = np.asarray(state[1])
+
+        # get distances to all other agents
+        distances = np.linalg.norm(state_agent[None] - states_others, axis=1)
+        other_closest_idx = np.argmin(distances)
+
+        # now get action to minimize distance to closest agent
+        distances = np.linalg.norm(
+            states_others[other_closest_idx][None] - np.asarray(self.possible_actions), axis=1)
+        greedy_action = self.possible_actions[np.argmin(distances)]
+
+        # Step
+        action = greedy_action
+        self.total_distance += self.step_size
+
+        # Log
+        # self.history["agent_num_turn"].append(deepcopy(self.num_turn))
+        # self.history["agent_angle"].append(deepcopy(self.angle))
+        # self.history["agent_l"].append(deepcopy(self.l))
+        self.history["agent_total_l"].append(deepcopy(self.total_distance))
+        self.history["agent_step"].append(deepcopy(self.step_size))
+        # self.history["agent_num_step"].append(deepcopy(self.num_step))
+        self.history["agent_action"].append(deepcopy(action))
+
+        return action
+
+    def reset(self):
+        """Reset all counters, turns, and steps"""
+
+        # Clean
+        self.num_turn = 0
+        self.num_step = 0
+        self.step = 0
+        self.total_distance = 0.0
+        self.history = defaultdict(list)

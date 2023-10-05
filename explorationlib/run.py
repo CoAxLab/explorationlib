@@ -121,7 +121,6 @@ def experiment(name,
     else:
         return results
 
-
 def multi_experiment(name,
                      agents,
                      env,
@@ -178,7 +177,13 @@ def multi_experiment(name,
                     continue
 
                 # Step the agent
-                action = agent(state[i])
+                if type(agent).__name__ in ["GreedyPredatorGrid"]:
+                  # state is current agent state & other agent states
+                  state_ = [state[i], [
+                      x for i_, x in enumerate(state) if i_ != i]]
+                  action = agent(state_)
+                else:
+                  action = agent(state[i])
                 next_state, reward, done, info = env.step(action, i)
 
                 # Learn? Might do nothing.
