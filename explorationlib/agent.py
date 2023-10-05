@@ -2116,7 +2116,6 @@ class GreedyPredatorGrid(Agent2d):
 
     def __init__(self, step_size=1):
         super().__init__()
-        self.env = env
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
         self.step_size = int(step_size)
