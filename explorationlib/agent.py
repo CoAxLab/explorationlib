@@ -15,6 +15,8 @@ from explorationlib.memory import EntropyMemory
 from explorationlib.memory import NoveltyMemory
 from explorationlib.memory import DiscreteDistributionGrid
 
+from scipy.spatial.distance import cdist
+
 
 # -----------------------------------------------------------------------------
 # RL - bandits
@@ -2114,8 +2116,9 @@ class GreedyPredatorGrid(Agent2d):
              Future implementation might take into account agent type.
     """
 
-    def __init__(self, step_size=1):
+    def __init__(self, step_size=1, p_move=1.):
         super().__init__()
+        self.p_move = p_move
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
         self.step_size = int(step_size)
@@ -2147,21 +2150,27 @@ class GreedyPredatorGrid(Agent2d):
         """
 
         # greedily choose angle
-        state_agent = state[0]
+        state_agent = np.asarray(state[0])
         states_others = np.asarray(state[1])
 
-        # get distances to all other agents
-        distances = np.linalg.norm(state_agent[None] - states_others, axis=1)
-        other_closest_idx = np.argmin(distances)
+        if self.np_random.rand() <= self.p_move:
 
-        # now get action to minimize distance to closest agent
-        distances = np.linalg.norm(
-            states_others[other_closest_idx][None] - np.asarray(self.possible_actions), axis=1)
-        greedy_action = self.possible_actions[np.argmin(distances)]
+          # get distances to all other agents
+          distances = cdist(state_agent[None], states_others)
+          other_closest_idx = np.argmin(distances)
 
-        # Step
-        action = greedy_action
-        self.total_distance += self.step_size
+          # now get action to minimize distance to closest agent
+          distances = cdist(states_others[other_closest_idx][None],
+                            state_agent[None]+np.asarray(self.possible_actions))
+          greedy_action = self.possible_actions[np.argmin(distances)]
+
+          # Step
+          action = [a*self.step_size for a in greedy_action]
+          self.total_distance += self.step_size
+
+        else:
+          # no movement
+          action = (0, 0)
 
         # Log
         # self.history["agent_num_turn"].append(deepcopy(self.num_turn))
