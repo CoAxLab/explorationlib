@@ -1607,6 +1607,13 @@ class GradientDiffusionGrid(Agent2d):
     Note: 
     ----
     Positive gradients set the turn prob. to p_pos.
+
+     Citation
+    --------
+    Renorm scheme taken from:
+
+    - Jansen, V. A. A., Mashanova, A. & Petrovskii, S. Comment on ‘Levy Walks Evolve Through Interaction Between Movement and Environmental Complexity’. Science 335, 918–918 (2012).
+
     """
     def __init__(self, min_length=1, scale=2, p_neg=0.8, p_pos=0.2):
         super().__init__()
@@ -1624,6 +1631,9 @@ class GradientDiffusionGrid(Agent2d):
         self.p_pos = float(p_pos)
         self.p_neg = float(p_neg)
         self.last_obs = 0.0
+        self.renorm = (self.scale - 1) / (self.min_length
+                                             **(1 - self.scale))
+
         self.reset()
 
     def _angle(self, state):
@@ -1635,7 +1645,9 @@ class GradientDiffusionGrid(Agent2d):
         i = 0
         while True and i < 10000:
             i += 1
-            l = self.np_random.exponential(self.scale)
+            xi = self.np_random.rand()
+            l = self.renorm * np.power(xi, (-1 / self.scale))
+            #l = self.np_random.exponential(self.scale)
             l = int(l)
             if l > self.min_length:
                 return l
@@ -1645,7 +1657,7 @@ class GradientDiffusionGrid(Agent2d):
         # Parse
         pos, obs = state
 
-        # Est grad (crudely)
+        # Est grad as a simple sign
         grad = np.sign(obs - self.last_obs)
         self.last_obs = deepcopy(obs)
 
@@ -1669,7 +1681,6 @@ class GradientDiffusionGrid(Agent2d):
                 self.angle = self._angle(state)
                 self.step = self.step_size
 
-        # print(pos, obs, grad, p, self.angle)
         # Step
         action = self.angle
         self.total_distance += self.step
