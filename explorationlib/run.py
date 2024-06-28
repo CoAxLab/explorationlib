@@ -55,14 +55,11 @@ def experiment(name,
     # to the results list
     results = []
 
-    # store the environment to reset it after each experiment
+    # Copy the baseline environment to reset later
     base_env = deepcopy(env)
 
     # !
-    for k in tqdm(range(num_experiments), desc=base):
-        # Reset the environment now that they are eating
-        # env = base_env
-        
+    for k in tqdm(range(num_experiments), desc=base):        
         # Create an exp log
         log = defaultdict(list)
 
@@ -101,9 +98,6 @@ def experiment(name,
                 break
 
         
-        # Reset the environment completely
-        env = base_env 
-
         # Metadata
         log["exp_agent"] = deepcopy(agent)
         log["exp_name"] = base
