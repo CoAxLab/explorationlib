@@ -1387,6 +1387,30 @@ def uniform_targets(N, shape, prng=None):
 
     return targets
 
+def uniform_patch_targets(N, shape, radius, N_per_patch, prng=None):
+    prng = _init_prng(prng)
+
+    patch_locs = []
+    for s in shape:
+        locs = prng.uniform(-s, s, size=N)
+        patch_locs.append(deepcopy(locs))
+
+    # Reorg into a list of location arrays
+    patch_locs = list(zip(*patch_locs))
+    patch_locs = [np.asarray(t) for t in patch_locs]
+    
+    targets = []
+    for patch_loc in patch_locs:
+        for i in range(N_per_patch):
+            # https://stackoverflow.com/questions/5837572/generate-a-random-point-within-a-circle-uniformly
+            r = radius * np.sqrt(prng.random())
+            theta = prng.random() * 2 * np.pi
+            x = patch_loc[0] + r * np.cos(theta)
+            y = patch_loc[1] + r * np.sin(theta)
+            targets.append(np.array([x,y]))
+    
+    return targets, patch_locs
+
 
 def exponential_targets(N, shape, scale=1, clip=True, prng=None):
     prng = _init_prng(prng)
