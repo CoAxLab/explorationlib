@@ -15,14 +15,9 @@ def deepcopy_with_rng(obj):
     """
     Performs a deepcopy, handling random number generators gracefully.
     """
-    # Temporarily store the RNG state
-    rng_state = obj.get_state()  
-    
     # Create a deepcopy without the RNG
     copy_obj = deepcopy(obj, memo={id(obj._rng): obj._rng})  
     
-    # Restore the RNG state
-    copy_obj.set_state(rng_state)  
     return copy_obj
 
 
