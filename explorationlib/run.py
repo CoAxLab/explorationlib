@@ -55,8 +55,9 @@ def experiment(name,
     # to the results list
     results = []
 
-    # store the environmetn to reset it after each experiment
-    base_env = env 
+    # store the environment to reset it after each experiment
+    base_env = env
+
     # !
     for k in tqdm(range(num_experiments), desc=base):
         # Reset the environment now that they are eating
