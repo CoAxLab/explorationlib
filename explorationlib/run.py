@@ -49,17 +49,18 @@ def experiment(name,
 
     # Seed
     agent.seed(seed)
-    #env.seed(seed)
+    env.seed(seed)
 
     # Add one log for each exp
     # to the results list
     results = []
 
+    # store the environmetn to reset it after each experiment
+    base_env = env 
     # !
     for k in tqdm(range(num_experiments), desc=base):
         # Reset the environment now that they are eating
-        env = Env()
-        env.seed(seed)
+        env = base_env
         
         # Create an exp log
         log = defaultdict(list)
