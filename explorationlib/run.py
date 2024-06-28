@@ -3,23 +3,12 @@ import numpy as np
 import cloudpickle
 
 from copy import deepcopy
-from copy import copy
 from collections import defaultdict
 
 from explorationlib.util import save
 from tqdm.autonotebook import tqdm
 from explorationlib import local_gym
 from explorationlib import agent as agent_gym
-
-
-def deepcopy_with_rng(obj):
-    """
-    Performs a deepcopy, handling random number generators gracefully.
-    """
-    # Create a deepcopy without the RNG
-    copy_obj = deepcopy(obj, memo={id(obj._rng): obj._rng})  
-    
-    return copy_obj
 
 
 def experiment(name,
@@ -67,7 +56,7 @@ def experiment(name,
     results = []
 
     # Copy the baseline environment to reset later
-    base_env = copy(env)
+    base_env = deepcopy(env)
 
     # !
     for k in tqdm(range(num_experiments), desc=base):        
@@ -109,7 +98,7 @@ def experiment(name,
                 break
 
         # Reset the environment
-        env = copy(base_env)
+        env = deepcopy(base_env)
 
         # Metadata
         log["exp_agent"] = deepcopy(agent)
