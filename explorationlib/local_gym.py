@@ -375,6 +375,8 @@ class Field(gym.Env):
             # Coin flip
             if self.np_random.rand() <= self.p_target:
                 self.reward = value
+                #eat the food
+                self.values[ind] = 0.0
             else:
                 self.reward = 0.0
 
@@ -1387,6 +1389,7 @@ def uniform_targets(N, shape, prng=None):
 
     return targets
 
+# come back and clean up the variable naming later
 def uniform_patch_targets(N, shape, radius, N_per_patch, prng=None):
     prng = _init_prng(prng)
 
