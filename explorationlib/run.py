@@ -11,6 +11,24 @@ from explorationlib import local_gym
 from explorationlib import agent as agent_gym
 
 
+def deepcopy_with_rng(obj):
+    """
+    Performs a deepcopy, handling random number generators gracefully.
+    """
+    if hasattr(obj, '_generator_ctor'):  # Check if object has a random number generator
+        # Temporarily store the RNG state
+        rng_state = obj.get_state()  
+        
+        # Create a deepcopy without the RNG
+        copy_obj = deepcopy(obj, memo={id(obj._rng): obj._rng})  
+        
+        # Restore the RNG state
+        copy_obj.set_state(rng_state)  
+        return copy_obj
+    else:
+        return deepcopy(obj)
+
+
 def experiment(name,
                agent,
                env,
@@ -56,7 +74,7 @@ def experiment(name,
     results = []
 
     # Copy the baseline environment to reset later
-    base_env = deepcopy(env)
+    base_env = deepcopy_with_rng(env)
 
     # !
     for k in tqdm(range(num_experiments), desc=base):        
