@@ -66,7 +66,7 @@ def experiment(name,
     results = []
 
     # Copy the baseline environment to reset later
-    base_env = deepcopy_with_rng(env)
+    base_env = copy(env)
 
     # !
     for k in tqdm(range(num_experiments), desc=base):        
@@ -107,7 +107,9 @@ def experiment(name,
             if done:
                 break
 
-        
+        # Reset the environment
+        env = copy(base_env)
+
         # Metadata
         log["exp_agent"] = deepcopy(agent)
         log["exp_name"] = base
