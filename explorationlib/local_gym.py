@@ -376,7 +376,7 @@ class Field(gym.Env):
             if self.np_random.rand() <= self.p_target:
                 self.reward = value
                 #eat the food
-                self.values[ind] = 0.0
+                # self.values[ind] = 0.0
             else:
                 self.reward = 0.0
 
