@@ -56,7 +56,7 @@ def experiment(name,
     results = []
 
     # store the environment to reset it after each experiment
-    base_env = env
+    base_env = deepcopy(env)
 
     # !
     for k in tqdm(range(num_experiments), desc=base):
@@ -101,7 +101,7 @@ def experiment(name,
                 break
 
         
-        # Reset the environment
+        # Reset the environment completely
         env = base_env 
 
         # Metadata
