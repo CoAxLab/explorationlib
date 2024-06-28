@@ -176,6 +176,45 @@ def search_efficiency(exp_data):
 
     return effs
 
+def on_off_patch_time(exp_data, num_agents, patch_locs, patch_radius):
+    """Time steps within vs between patches for multiple runs"""
+    
+    # Load?
+    if isinstance(exp_data, str):
+        exp_data = load(exp_data)
+    
+    on_patch_steps  = []
+    off_patch_steps = []
+    
+    var_name="exp_state"
+    
+    for log in tqdm(exp_data, desc="on_off_patch_time"):
+        
+        on_patch_step  = 0
+        off_patch_step = 0
+    
+        # fmt
+        states_vec = log[var_name]
+        states = [list() for _ in range(num_agents)]
+    
+        # repack
+        states = np.array(states_vec)
+        
+        xs = states[:, 0]
+        ys = states[:, 1]
+        
+        for x, y in zip(xs, ys):
+            for patch_loc in patch_locs:
+                if (x - patch_loc[0])**2 + (y - patch_loc[1])**2 < patch_radius:
+                    on_patch_step += 1
+                else:
+                    off_patch_step += 1
+    
+        on_patch_steps.append(on_patch_step)
+        off_patch_steps.append(off_patch_step)
+            
+    return on_patch_steps, off_patch_steps
+
 
 if __name__ == "__main__":
     import fire
