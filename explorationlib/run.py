@@ -3,6 +3,7 @@ import numpy as np
 import cloudpickle
 
 from copy import deepcopy
+from copy import copy
 from collections import defaultdict
 
 from explorationlib.util import save
