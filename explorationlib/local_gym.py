@@ -320,7 +320,8 @@ class Field(gym.Env):
     def add_targets(self,
                     targets,
                     values,
-                    detection_radius=1,
+                    detection_radius = 1,
+                    p_target = 0.5,
                     kd_kwargs=None):
         """Add targets, and their values"""
 
@@ -329,6 +330,7 @@ class Field(gym.Env):
             raise ValueError("targets and values must match.")
 
         # Will it be there?
+        self.p_target = p_target
         self.detection_radius = detection_radius
 
         # Store raw targets simply (list)
@@ -365,20 +367,20 @@ class Field(gym.Env):
         if dist <= self.detection_radius:
             # What's the value?
             value = self.values[ind]
-            self.reward = value
-            self.values[ind] = 0.0 # Eat the target
+            #self.reward = value
+            #self.values[ind] = 0.0 # Eat the target
 
             # Ignore None
             if value is None:
                 self.reward = 0.0
 
-            # # Coin flip
-            # if self.np_random.rand() <= self.p_target:
-            #     self.reward = value
-            #     #eat the food
-            #     self.values[ind] = 0.0
-            # else:
-            #     self.reward = 0.0
+            # Coin flip
+            if self.np_random.rand() <= self.p_target:
+                self.reward = value
+                #eat the food
+                self.values[ind] = 0.0
+            else:
+                self.reward = 0.0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
