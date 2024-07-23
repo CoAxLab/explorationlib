@@ -367,18 +367,20 @@ class Field(gym.Env):
         if dist <= self.detection_radius:
             # What's the value?
             value = self.values[ind]
+            self.reward = value
+            #self.values[ind] = 0.0 # Eat the target
 
-            # Ignore None
-            if value is None:
-                self.reward = 0.0
+            # # Ignore None
+            # if value is None:
+            #     self.reward = 0.0
 
-            # Coin flip
-            if self.np_random.rand() <= self.p_target:
-                self.reward = value
-                #eat the food
-                self.values[ind] = 0.0
-            else:
-                self.reward = 0.0
+            # # Coin flip
+            # if self.np_random.rand() <= self.p_target:
+            #     self.reward = value
+            #     #eat the food
+            #     self.values[ind] = 0.0
+            # else:
+            #     self.reward = 0.0
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
