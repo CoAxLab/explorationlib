@@ -368,7 +368,7 @@ class Field(gym.Env):
             # What's the value?
             value = self.values[ind]
             self.reward = value
-            self.values[ind] = 0.0 # Eat the target
+            #self.values[ind] = 0.0 # Eat the target
 
             # # Ignore None
             # if value is None:
