@@ -321,8 +321,7 @@ class Field(gym.Env):
                     targets,
                     values,
                     detection_radius=1,
-                    kd_kwargs=None,
-                    p_target=1.0):
+                    kd_kwargs=None):
         """Add targets, and their values"""
 
         # Sanity
@@ -330,7 +329,6 @@ class Field(gym.Env):
             raise ValueError("targets and values must match.")
 
         # Will it be there?
-        self.p_target = p_target
         self.detection_radius = detection_radius
 
         # Store raw targets simply (list)
@@ -354,7 +352,7 @@ class Field(gym.Env):
         self.reward = 0.0
 
         # How far are we and is it close enough to
-        # generate a reward? AKA are we at a target?
+        # generate a reward? 
         state = np.atleast_2d(np.asarray(self.state))
         dist, ind = self._kd.query(state, k=1)
 
@@ -368,11 +366,11 @@ class Field(gym.Env):
             # What's the value?
             value = self.values[ind]
             self.reward = value
-            #self.values[ind] = 0.0 # Eat the target
+            self.values[ind] = 0.0 # Eat the target
 
-            # # Ignore None
-            # if value is None:
-            #     self.reward = 0.0
+            # Ignore None
+            if value is None:
+                self.reward = 0.0
 
             # # Coin flip
             # if self.np_random.rand() <= self.p_target:
