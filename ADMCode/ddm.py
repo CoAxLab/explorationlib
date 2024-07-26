@@ -132,7 +132,7 @@ def gen_ddm_storage_objects(parameters, ntrials=200, deadline=1.5):
         traces (ndarray): 2d array (Ntrials x Ntime) of evidence traces
     """
     dt = parameters[-1]
-    ntime = np.int(np.floor(deadline / dt))
+    ntime = int(np.floor(deadline / dt))
 
     # empty matrix Ntrials x 2 (cols for RT & Choice)
     data = np.zeros((ntrials, 2))

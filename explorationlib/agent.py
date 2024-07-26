@@ -1188,18 +1188,17 @@ class AccumulatorGradientGrid(Agent2d):
             p = self.p_neg
             if grad > 0:
                 p = self.p_pos
-            # Keep going?
-            if self.l > self.step:
-                self.step += self.step_size
-                self.num_step += 1
             # Turn?
+            if p > self.np_random.rand():
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
             else:
-                if p > self.np_random.rand():
-                    self.num_turn += 1
-                    self.num_step = 0
-                    self.l = self._l(state)
-                    self.angle = self._angle(state)
-                    self.step = self.step_size
+                self.num_step += 1
+
+            self.step = self.step_size
+
             # Update the past
             self.last_obs = deepcopy(obs)
             # Set new direction
@@ -1363,19 +1362,16 @@ class AccumulatorInfoGrid(Agent2d):
             if grad > 0:
                 p = self.p_pos
 
-            # Keep going?
-            if self.l > self.step:
-                self.step += self.step_size
+            # Turn?
+            if p > self.np_random.rand():
+                self.num_turn += 1
+                self.num_step = 0
+                self.l = self._l(state)
+                self.angle = self._angle(state)
+            else:
                 self.num_step += 1
 
-            # Turn?
-            else:
-                if p > self.np_random.rand():
-                    self.num_turn += 1
-                    self.num_step = 0
-                    self.l = self._l(state)
-                    self.angle = self._angle(state)
-                    self.step = self.step_size
+            self.step = self.step_size
 
             # Update the past
             self.last_obs = deepcopy(obs)
@@ -1543,32 +1539,24 @@ class DiffusionGrid(Agent2d):
 
     def _l(self, state):
         """Sample length"""
-        i = 0
-        while True and i < 10000:
-            i += 1
-            l = self.np_random.exponential(self.scale)
-            l = int(l)
-            if l > self.min_length:
-                return l
+        return self.step_size
 
     def forward(self, state):
         """Step forward."""
+        
+        new_angle = self._angle(state)
 
-        # Keep going?
-        if self.l > self.step:
-            # Step
-            self.step += self.step_size
-            # Clip?
-            if self.step > self.l:
-                self.step = int(self.step - self.l)
+        if self.angle == new_angle:
+            # Run
             self.num_step += 1
-        # Turn?
+            self.l += self._l(state)
+            self.angle = self.angle
         else:
-            self.num_turn += 1
+            # Tumble
             self.num_step = 0
             self.l = self._l(state)
-            self.angle = self._angle(state)
-            self.step = self.step_size
+            self.angle = new_angle
+            self.num_turn += 1
 
         # Step
         action = self.angle
@@ -1635,23 +1623,15 @@ class GradientDiffusionGrid(Agent2d):
                                              **(1 - self.scale))
 
         self.reset()
-
+ 
     def _angle(self, state):
         i = int(self.np_random.randint(0, len(self.possible_actions)))
         return self.possible_actions[i]
 
     def _l(self, state):
         """Sample length"""
-        i = 0
-        while True and i < 10000:
-            i += 1
-            xi = self.np_random.rand()
-            l = self.renorm * np.power(xi, (-1 / self.scale))
-            #l = self.np_random.exponential(self.scale)
-            l = int(l)
-            if l > self.min_length:
-                return l
-
+        return self.step_size
+    
     def forward(self, state):
         """Step forward."""
         # Parse
@@ -1667,19 +1647,19 @@ class GradientDiffusionGrid(Agent2d):
         p = self.p_neg
         if grad > 0:
             p = self.p_pos
-        # Keep going?
-        if self.l > self.step:
-            self.step += self.step_size
-            self.num_step += 1
-        # Turn?
+
+        xi = self.np_random.rand()
+        if p > xi:
+            # Tumble
+            self.num_turn += 1
+            self.num_step = 0
+            self.l = self._l(state)
+            self.angle = self._angle(state)
         else:
-            xi = self.np_random.rand()
-            if p > xi:
-                self.num_turn += 1
-                self.num_step = 0
-                self.l = self._l(state)
-                self.angle = self._angle(state)
-                self.step = self.step_size
+            # Run
+            self.num_step += 1
+        
+        self.step = self.step_size
 
         # Step
         action = self.angle

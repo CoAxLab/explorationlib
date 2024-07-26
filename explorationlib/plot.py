@@ -467,7 +467,7 @@ def plot_length_hist(exp_data,
                      ax=None):
 
     # fmt
-    length_name = "agent_l"
+    length_name = "agent_num_step"
     x = np.asarray(exp_data[length_name])
 
     # Create a fig obj?
@@ -509,7 +509,7 @@ def plot_length_hist(exp_data,
                      ax=None):
 
     # fmt
-    length_name = "agent_l"
+    length_name = "agent_num_step"
     x = np.asarray(exp_data[length_name])
 
     # Create a fig obj?
