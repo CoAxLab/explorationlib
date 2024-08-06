@@ -1155,14 +1155,15 @@ class AccumulatorGradientGrid(Agent2d):
 
         # Consider things....
         stop = False
-        delta = self.drift_rate * (obs - self.last_obs)
+        delta = (self.last_obs - obs) # Is gradient going down?
         for n in range(self.max_steps):
-            evidence = delta * self.drift_rate * self._w(n)
-            if np.abs(evidence) > self.threshold:
+            evidence += delta * self.drift_rate + self._w(n)
+            if (evidence) > self.threshold:
                 stop = True
                 break
 
         return evidence, np.sign(evidence), stop
+
 
     def forward(self, state):
         """Step forward."""
@@ -1171,38 +1172,26 @@ class AccumulatorGradientGrid(Agent2d):
 
         # Deliberate by accumulation
         self.evidence, grad, stop = self._accumulate_grad(obs, self.evidence)
-
         # Default is no-op
         action = (0, 0)
         self.l = 0.0
-        self.step = 0.0
+        self.step = self.step_size
 
-        # Move only when accum has stopped:
+        # Jump only when accum has stopped:
         if stop:
-            # Reset
-            self.evidence = 0.0
+          # Reset
+          self.evidence = 0.0
+          self.num_turn += 1
+          self.num_step = 0
+          self.l = self._l(state)
+          self.angle = self._angle(state)
+        else:
+          self.num_step += 1
 
-            # Grad weighted coin toss:
-            #
-            # Pick p controller
-            p = self.p_neg
-            if grad > 0:
-                p = self.p_pos
-            # Turn?
-            if p > self.np_random.rand():
-                self.num_turn += 1
-                self.num_step = 0
-                self.l = self._l(state)
-                self.angle = self._angle(state)
-            else:
-                self.num_step += 1
-
-            self.step = self.step_size
-
-            # Update the past
-            self.last_obs = deepcopy(obs)
-            # Set new direction
-            action = self.angle
+        # Update the past
+        self.last_obs = deepcopy(obs)
+        # Set new direction
+        action = self.angle
 
         self.total_distance += self.step
 
@@ -1303,83 +1292,70 @@ class AccumulatorInfoGrid(Agent2d):
         # Step process
         self.w += (xi / np.sqrt(n + 1))
         return self.w
-
-    def _accumulate_hit(self, obs, evidence):
+    
+    def _accumulate_hit(self, p_old, p_new, evidence):
         """Weight the evidence for an observation"""
-        # If no info, treat as p_neg?
-        hit = 0
-        if np.isclose(obs, 0.0):
-            return obs, hit, True
-
         # Consider things....
         stop = False
-        delta = self.drift_rate * obs
+
+        # Info gain (by KL), and its grad
+        info_gain = scientropy(p_old, qk=p_new, base=2)
+        try:
+            #grad = info_gain - self.history["agent_info_gain"][-1]
+            # Is information being "lost"
+            grad = self.history["agent_info_gain"][-1] - info_gain
+        except IndexError:
+            grad = 0
+            # grad = -info_gain
+
         for n in range(self.max_steps):
-            evidence = delta * self.drift_rate * self._w(n)
+            evidence += grad * self.drift_rate + self._w(n)
             if evidence > self.threshold:
-                hit = 1
                 stop = True
                 break
 
-        return evidence, hit, stop
+        return evidence, info_gain, stop
 
     def forward(self, state):
         """Step forward."""
         # Parse
         pos, obs = state
 
-        # Deliberate by accumulation
-        self.evidence, hit, stop = self._accumulate_hit(obs, self.evidence)
-
+        hit = 0
+        grad = obs - self.last_obs
+        if grad > 0:
+          hit = 1
+        
         # Add to grid memory,
         p_old = deepcopy(self.grid.probs(pos))
         self.grid(pos, hit)
         p_new = deepcopy(self.grid.probs(pos))
 
-        # Info gain (by KL), and its grad
-        info_gain = scientropy(p_old, qk=p_new, base=2)
-        try:
-            grad = info_gain - self.history["agent_info_gain"][-1]
-            # grad = self.history["agent_info_gain"][-1] - info_gain
-        except IndexError:
-            grad = info_gain
-            # grad = -info_gain
+        # Deliberate by accumulation
+        self.evidence, info_gain, stop = self._accumulate_hit(p_old, p_new, self.evidence)
 
         # Default is no-op
         action = (0, 0)
         self.l = 0.0
-        self.step = 0.0
+        self.step = self.step_size
 
-        # Move only when accum has stopped:
+        # Jump only when accum has stopped:
         if stop:
-            # Reset
-            self.evidence = 0.0
+          # Reset
+          self.evidence = 0.0
+          self.num_turn += 1
+          self.num_step = 0
+          self.l = self._l(state)
+          self.angle = self._angle(state)
+        else:
+          self.num_step += 1
 
-            # Grad weighted coin toss:
-            #
-            # Pick p controller
-            p = self.p_neg
-            if grad > 0:
-                p = self.p_pos
+        # Update the past
+        self.last_obs = deepcopy(obs)
+        # Set new direction
+        action = self.angle
 
-            # Turn?
-            if p > self.np_random.rand():
-                self.num_turn += 1
-                self.num_step = 0
-                self.l = self._l(state)
-                self.angle = self._angle(state)
-            else:
-                self.num_step += 1
-
-            self.step = self.step_size
-
-            # Update the past
-            self.last_obs = deepcopy(obs)
-
-            #  Set new direction
-            action = self.angle
-
-        self.total_distance += self.step
+        self.total_distance += self.step    
 
         # Log
         self.history["agent_obs"].append(deepcopy(obs))
@@ -1518,7 +1494,7 @@ class GradientDiffusionDiscrete(Agent2d):
 
 class DiffusionGrid(Agent2d):
     """Diffusion search, on a NSEW grid"""
-    def __init__(self, min_length=1, scale=2, step_size=1):
+    def __init__(self, min_length=1, p_tumble=0.2, step_size=1):
         super().__init__()
         self.possible_actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
@@ -1530,7 +1506,7 @@ class DiffusionGrid(Agent2d):
         if self.min_length < 1:
             raise ValueError("min_length must be >= 1")
 
-        self.scale = float(scale)
+        self.p_tumble = float(p_tumble)
         self.reset()
 
     def _angle(self, state):
@@ -1545,8 +1521,8 @@ class DiffusionGrid(Agent2d):
         """Step forward."""
         
         new_angle = self._angle(state)
-
-        if self.angle == new_angle:
+        
+        if (self.angle == new_angle) or (self.p_tumble > self.np_random.rand()):
             # Run
             self.num_step += 1
             self.l += self._l(state)
