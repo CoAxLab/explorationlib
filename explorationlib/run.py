@@ -56,7 +56,11 @@ def experiment(name,
     results = []
 
     # Copy the baseline environment to reset later
-    base_vals = deepcopy(env.values)
+    # for foraging environments only
+    try:
+      base_vals = deepcopy(env.values)
+    except:
+      base_vals = []
 
     # !
     for k in tqdm(range(num_experiments), desc=base):        
@@ -98,8 +102,9 @@ def experiment(name,
                 break
 
         # Reset the environment
-        env.values = deepcopy(base_vals)
-
+        if len(base_vals) > 0:
+          env.values = deepcopy(base_vals)
+          
         # Metadata
         log["exp_agent"] = deepcopy(agent)
         log["exp_name"] = base

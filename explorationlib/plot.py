@@ -455,50 +455,50 @@ def plot_angle(exp_data,
     return ax
 
 
-def plot_length_hist(exp_data,
-                     loglog=True,
-                     bins=20,
-                     figsize=(3, 3),
-                     color="black",
-                     alpha=1.0,
-                     density=True,
-                     label=None,
-                     title=None,
-                     ax=None):
+# def plot_length_hist(exp_data,
+#                      loglog=True,
+#                      bins=20,
+#                      figsize=(3, 3),
+#                      color="black",
+#                      alpha=1.0,
+#                      density=True,
+#                      label=None,
+#                      title=None,
+#                      ax=None):
 
-    # fmt
-    length_name = "agent_num_step"
-    x = np.asarray(exp_data[length_name])
+#     # fmt
+#     length_name = "agent_num_step"
+#     x = np.asarray(exp_data[length_name])
 
-    # Create a fig obj?
-    if ax is None:
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111)
+#     # Create a fig obj?
+#     if ax is None:
+#         fig = plt.figure(figsize=figsize)
+#         ax = fig.add_subplot(111)
 
-    if loglog:
-        bins = np.geomspace(x.min(), x.max(), bins)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
+#     if loglog:
+#         bins = np.geomspace(x.min(), x.max(), bins)
+#         ax.set_xscale('log')
+#         ax.set_yscale('log')
 
-    ax.hist(x,
-            bins=bins,
-            color=color,
-            alpha=alpha,
-            density=density,
-            label=label)
-    ax.set_xlabel("Length")
-    ax.set_ylabel("Count")
+#     ax.hist(x,
+#             bins=bins,
+#             color=color,
+#             alpha=alpha,
+#             density=density,
+#             label=label)
+#     ax.set_xlabel("Length")
+#     ax.set_ylabel("Count")
 
-    # Labels, legends, titles?
-    if title is not None:
-        ax.set_title(title)
-    if label is not None:
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+#     # Labels, legends, titles?
+#     if title is not None:
+#         ax.set_title(title)
+#     if label is not None:
+#         ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-    return ax
+#     return ax
     
 def plot_length_hist(exp_data,
-                     loglog=True,
+                     loglog=False,
                      bins=20,
                      figsize=(3, 3),
                      color="black",
@@ -509,7 +509,7 @@ def plot_length_hist(exp_data,
                      ax=None):
 
     # fmt
-    length_name = "agent_num_step"
+    length_name = "agent_l"
     x = np.asarray(exp_data[length_name])
 
     # Create a fig obj?
@@ -529,7 +529,11 @@ def plot_length_hist(exp_data,
             density=density,
             label=label)
     ax.set_xlabel("Length")
-    ax.set_ylabel("Count")
+
+    if density:
+        ax.set_ylabel("Density")
+    else:
+        ax.set_ylabel("Count")
 
     # Labels, legends, titles?
     if title is not None:
