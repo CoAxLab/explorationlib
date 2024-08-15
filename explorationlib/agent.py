@@ -2153,30 +2153,34 @@ class Diffusion2d(Agent2d):
 
     def _l(self, state):
         """Sample length"""
-        i = 0
-        while True and i < 10000:
-            i += 1
-            #l = self.np_random.exponential(self.scale)
-            l = self.np_random.gamma(shape=self.shape, scale=self.scale)
-            if l > self.min_length:
-                return l
+        l = self.min_length + self.np_random.gamma(shape=self.shape, scale=self.scale)
+        
+        # i = 0
+        # while True and i < 10000:
+        #     i += 1
+        #     #l = self.np_random.exponential(self.scale)
+        #     l = self.np_random.gamma(shape=self.shape, scale=self.scale)
+        #     if l > self.min_length:
+        #         return l
 
     def forward(self, state):
         """Step forward."""
-        # Go? Or turn?
-        if self.l > self.step:
-            self.step += self.step_size
-            self.num_step += 1
-        else:
+
+        new_angle = self._angle(state)
+        # Did we turn?
+        if new_angle != self.angle:
             self.num_turn += 1
             self.num_step = 0
-            self.l = self._l(state)
-            self.angle = self._angle(state)
-            self.step = self.step_size
+        else:
+            self.num_step += 1
+        
+        self.angle = new_angle
+        self.l = self._l(state)
+
 
         # Step
         action = self._convert(self.angle, self.step_size)
-        self.total_distance += self.step
+        self.total_distance += abs(self.l)
 
         # Log
         self.history["agent_num_turn"].append(deepcopy(self.num_turn))
