@@ -1752,6 +1752,8 @@ class GradientDiffusionGrid(Agent2d):
         else:
             # Run
             self.num_step += 1
+            self.l += self._l(state)
+            self.angle = self.angle
         
         self.step = self.step_size
 
