@@ -2155,6 +2155,7 @@ class Diffusion2d(Agent2d):
         """Sample length"""
         l = self.min_length + self.np_random.gamma(shape=self.shape, scale=self.scale)
         return l
+    
         # i = 0
         # while True and i < 10000:
         #     i += 1
