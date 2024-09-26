@@ -1162,6 +1162,10 @@ class AccumulatorGradientGrid(Agent2d):
                 stop = True
                 break
 
+        # If evidence is negative hold at 0 (to avoid negative run)
+        if evidence < 0:
+          evidence = 0
+
         return evidence, np.sign(evidence), stop
 
 
@@ -1173,8 +1177,8 @@ class AccumulatorGradientGrid(Agent2d):
         # Deliberate by accumulation
         self.evidence, grad, stop = self._accumulate_grad(obs, self.evidence)
         # Default is no-op
-        action = (0, 0)
-        self.l = 0.0
+        # action = (0, 0)
+        # self.l = 0.0
         self.step = self.step_size
 
         # Jump only when accum has stopped:
